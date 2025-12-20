@@ -1,4 +1,4 @@
-![repository-open-graph](./.github/open-graph/repository-open-graph.png)
+![repository-open-graph](docs/open-graph/repository-open-graph.png)
 
 # Access Authorization Service
 
