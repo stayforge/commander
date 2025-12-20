@@ -2,7 +2,6 @@
 
 # Access Authorization Service
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/stayforge/access-authorization-service.svg)](https://pkg.go.dev/github.com/stayforge/access-authorization-service)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/stayforge/access-authorization-service?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
 [![GitHub License](https://img.shields.io/github/license/stayforge/access-authorization-service?style=for-the-badge)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/stayforge/access-authorization-service?style=for-the-badge)](https://github.com/stayforge/access-authorization-service/stargazers)
