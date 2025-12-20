@@ -1,0 +1,39 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build
+dist/
+build/
+
+# Test coverage
+*.coverprofile
+coverage.html
