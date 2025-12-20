@@ -6,9 +6,10 @@ Change Date: 2035-01-01
 Change License: Apache-2.0
 
 Additional Use Grant:
-Internal use within an organization is permitted.
-Offering this software as a hosted or managed service
-is prohibited without a commercial license from the Licensor.
+Internal production use within an organization is permitted.
+You may not offer the Licensed Work as a hosted or managed service,
+or use it to provide services to third parties,
+without a commercial license from the Licensor.
 
 License text copyright © 2017 MariaDB Corporation Ab, All Rights Reserved.
 "Business Source License" is a trademark of MariaDB Corporation Ab.
