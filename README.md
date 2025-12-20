@@ -2,6 +2,14 @@
 
 # Access Authorization Service
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/stayforge/access-authorization-service.svg)](https://pkg.go.dev/github.com/stayforge/access-authorization-service)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/stayforge/access-authorization-service?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
+[![GitHub License](https://img.shields.io/github/license/stayforge/access-authorization-service?style=for-the-badge)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/stayforge/access-authorization-service?style=for-the-badge)](https://github.com/stayforge/access-authorization-service/stargazers)
+[![Codecov](https://img.shields.io/codecov/c/github/stayforge/access-authorization-service?style=for-the-badge&logo=codecov)](https://codecov.io/gh/stayforge/access-authorization-service)
+[![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Gin](https://img.shields.io/badge/Gin-008ECF?style=for-the-badge&logo=gin&logoColor=white)](https://gin-gonic.com/)
+
 A high-performance Go-based authentication service for verifying device access using card-based authorization with MongoDB Atlas backend.
 
 ## 🌐 Domain
@@ -54,7 +62,7 @@ This service is a complete rewrite from Python/FastAPI to Go/Gin, providing:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/iktahana/access-authorization-service.git
+git clone https://github.com/stayforge/access-authorization-service.git
 cd Access-Authorization-Service
 ```
 
