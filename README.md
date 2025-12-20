@@ -1,3 +1,5 @@
+![repository-open-graph](./.github/open-graph/repository-open-graph.png)
+
 # Access Authorization Service
 
 A high-performance Go-based authentication service for verifying device access using card-based authorization with MongoDB Atlas backend.
