@@ -23,28 +23,28 @@ jobs:
           echo "today=$TODAY" >> "$GITHUB_OUTPUT"
 
       - name: Stop if before change date
-        if: steps.date.outputs.today < '2025-12-22'
-        run: echo "Not yet 2025-12-22, skipping."
+        if: steps.date.outputs.today < '2035-01-01'
+        run: echo "Not yet 2035-01-01, skipping."
 
       - name: Backup current LICENSE
-        if: steps.date.outputs.today >= '2025-12-22'
+        if: steps.date.outputs.today >= '2035-01-01'
         run: |
           mkdir -p .github/LICENSES
           cp LICENSE .github/LICENSES/old-LICENSE
 
       - name: Switch LICENSE to Apache-2.0
-        if: steps.date.outputs.today >= '2025-12-22'
+        if: steps.date.outputs.today >= '2035-01-01'
         run: |
           test -f .github/LICENSES/LICENSE-Apache2.0.txt
           cp .github/LICENSES/LICENSE-Apache2.0.txt LICENSE
 
       - name: Remove this workflow after switch
-        if: steps.date.outputs.today >= '2025-12-22'
+        if: steps.date.outputs.today >= '2035-01-01'
         run: |
           rm -f .github/workflows/license-switch.yml
 
       - name: Commit and push changes
-        if: steps.date.outputs.today >= '2025-12-22'
+        if: steps.date.outputs.today >= '2035-01-01'
         env:
           BRANCH_NAME: license-switch/apache-2.0
         run: |
