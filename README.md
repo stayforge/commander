@@ -1,6 +1,4 @@
-![repository-open-graph](docs/open-graph/repository-open-graph.png)
-
-# Stayforge Commander(Access Authorization Service)
+# Stayforge Commander (Access Authorization Service)
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/stayforge/access-authorization-service?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
 [![GitHub License](https://img.shields.io/github/license/stayforge/access-authorization-service?style=for-the-badge)](LICENSE)
