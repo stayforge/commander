@@ -1,6 +1,11 @@
 # Build stage
 FROM golang:1.25.5-alpine AS builder
 
+# Build arguments for version information
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG DATE=unknown
+
 WORKDIR /app
 
 # Copy go mod files
@@ -10,9 +15,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with version information
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
+    -ldflags="-w -s -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
     -o /app/bin/server \
     ./cmd/server
 
