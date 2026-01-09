@@ -10,7 +10,6 @@ import (
 func RootHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Welcome to Commander API",
-		"version": "1.0.0",
+		"version": Config.Version,
 	})
 }
-

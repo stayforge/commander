@@ -7,8 +7,9 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Server ServerConfig
-	KV     KVConfig
+	Version string
+	Server  ServerConfig
+	KV      KVConfig
 }
 
 // ServerConfig holds server-related configuration
@@ -59,6 +60,7 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
+		Version: "dev",
 		Server: ServerConfig{
 			Port:        getEnv("SERVER_PORT", "8080"),
 			Environment: getEnv("ENVIRONMENT", "STANDARD"),

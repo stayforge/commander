@@ -17,9 +17,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var (
+	version = "dev" // 默認值
+	commit  = "unknown"
+	date    = "unknown"
+)
+
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
+	cfg.Version = version
 
 	// Set Gin mode based on environment
 	if cfg.Server.Environment == "PRODUCTION" {
@@ -46,6 +53,9 @@ func main() {
 	// Add middleware
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+
+	// Set config for handlers
+	handlers.Config = cfg
 
 	// Register routes
 	setupRoutes(router, kvStore)
