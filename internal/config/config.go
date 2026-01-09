@@ -1,49 +1,88 @@
 package config
 
 import (
-	"fmt"
 	"os"
-
-	"github.com/joho/godotenv"
+	"strings"
 )
 
 // Config holds all configuration for the application
 type Config struct {
-	MongoDBURI        string
-	MongoDBDatabase   string
-	MongoDBCollection string
-	ServerPort        string
-	Environment       string
+	Version string
+	Server  ServerConfig
+	KV      KVConfig
 }
 
-// Load reads configuration from environment variables
-// It will attempt to load .env file if it exists, but won't fail if it doesn't
-func Load() (*Config, error) {
-	// Try to load .env file, but don't fail if it doesn't exist
-	_ = godotenv.Load()
+// ServerConfig holds server-related configuration
+type ServerConfig struct {
+	Port        string
+	Environment string
+}
 
-	config := &Config{
-		MongoDBURI:      os.Getenv("MONGODB_URI"),
-		MongoDBDatabase: os.Getenv("MONGODB_DATABASE"),
-		ServerPort:      os.Getenv("SERVER_PORT"),
-		Environment:     os.Getenv("ENVIRONMENT"),
+// KVConfig holds key-value storage configuration
+type KVConfig struct {
+	BackendType BackendType
+
+	// MongoDB URI
+	MongoURI string
+
+	// Redis URI
+	RedisURI string
+
+	// BBolt path
+	BBoltPath string
+}
+
+// BackendType represents the type of KV backend
+type BackendType string
+
+const (
+	BackendMongoDB BackendType = "mongodb"
+	BackendRedis   BackendType = "redis"
+	BackendBBolt   BackendType = "bbolt"
+)
+
+// LoadConfig loads configuration from environment variables
+func LoadConfig() *Config {
+	// Get DATABASE type (case-insensitive), default to bbolt
+	databaseType := strings.ToLower(getEnv("DATABASE", "bbolt"))
+
+	var backendType BackendType
+	switch databaseType {
+	case "mongodb":
+		backendType = BackendMongoDB
+	case "redis":
+		backendType = BackendRedis
+	case "bbolt":
+		backendType = BackendBBolt
+	default:
+		// Default to bbolt if unknown type
+		backendType = BackendBBolt
 	}
 
-	// Set defaults
-	if config.ServerPort == "" {
-		config.ServerPort = "8080"
-	}
-	if config.Environment == "" {
-		config.Environment = "STANDARD"
-	}
+	return &Config{
+		Version: "dev",
+		Server: ServerConfig{
+			Port:        getEnv("SERVER_PORT", "8080"),
+			Environment: getEnv("ENVIRONMENT", "STANDARD"),
+		},
+		KV: KVConfig{
+			BackendType: backendType,
 
-	// Validate required fields
-	if config.MongoDBURI == "" {
-		return nil, fmt.Errorf("MONGODB_URI is required")
-	}
-	if config.MongoDBDatabase == "" {
-		return nil, fmt.Errorf("MONGODB_DATABASE is required")
-	}
+			// MongoDB URI
+			MongoURI: getEnv("MONGODB_URI", ""),
 
-	return config, nil
+			// Redis URI
+			RedisURI: getEnv("REDIS_URI", ""),
+
+			// BBolt path (default: /var/lib/stayforge/commander)
+			BBoltPath: getEnv("DATA_PATH", "/var/lib/stayforge/commander"),
+		},
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

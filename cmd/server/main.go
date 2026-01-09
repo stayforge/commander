@@ -9,156 +9,99 @@ import (
 	"syscall"
 	"time"
 
+	"commander/internal/config"
+	"commander/internal/database"
+	"commander/internal/handlers"
+	"commander/internal/kv"
+
 	"github.com/gin-gonic/gin"
-	"github.com/iktahana/access-authorization-service/internal/config"
-	"github.com/iktahana/access-authorization-service/internal/database"
-	"github.com/iktahana/access-authorization-service/internal/handlers"
-	"github.com/iktahana/access-authorization-service/internal/service"
+)
+
+var (
+	version = "dev" // 默認值
+	commit  = "unknown"
+	date    = "unknown"
 )
 
 func main() {
 	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+	cfg := config.LoadConfig()
+	cfg.Version = version
 
-	log.Printf("Starting Access Authorization Service...")
-	log.Printf("Environment: %s", cfg.Environment)
-	log.Printf("Server Port: %s", cfg.ServerPort)
-
-	// Initialize MongoDB connection
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	mongodb, err := database.Connect(ctx, cfg.MongoDBURI, cfg.MongoDBDatabase, cfg.MongoDBCollection)
-	if err != nil {
-		log.Fatalf("Failed to connect to MongoDB: %v", err)
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := mongodb.Disconnect(ctx); err != nil {
-			log.Printf("Error disconnecting from MongoDB: %v", err)
-		}
-	}()
-
-	log.Printf("Successfully connected to MongoDB Atlas")
-
-	// Initialize services
-	cardService := service.NewCardService(mongodb.GetCollection())
-
-	// Initialize handlers
-	identifyHandler := handlers.NewIdentifyHandler(cardService)
-
-	// Setup Gin router
-	// Set mode based on environment
-	if cfg.Environment == "PRODUCTION" {
+	// Set Gin mode based on environment
+	if cfg.Server.Environment == "PRODUCTION" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Initialize KV store
+	kvStore, err := database.NewKV(cfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize KV store: %v", err)
+	}
+	defer kvStore.Close()
+
+	// Verify KV connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := kvStore.Ping(ctx); err != nil {
+		log.Fatalf("Failed to ping KV store: %v", err)
+	}
+
+	// Create Gin router
 	router := gin.Default()
 
 	// Add middleware
+	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(CORSMiddleware())
-	router.Use(LoggingMiddleware())
 
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":      "healthy",
-			"environment": cfg.Environment,
-			"timestamp":   time.Now().UTC(),
-		})
-	})
+	// Set config for handlers
+	handlers.Config = cfg
 
 	// Register routes
-	api := router.Group("/")
-	identifyHandler.RegisterRoutes(api)
+	setupRoutes(router, kvStore)
 
-	// Setup HTTP server
-	server := &http.Server{
-		Addr:           ":" + cfg.ServerPort,
-		Handler:        router,
-		ReadTimeout:    15 * time.Second,
-		WriteTimeout:   15 * time.Second,
-		IdleTimeout:    60 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1 MB
+	// Create HTTP server
+	port := ":" + cfg.Server.Port
+	srv := &http.Server{
+		Addr:    port,
+		Handler: router,
 	}
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Server listening on port %s", cfg.ServerPort)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Printf("Server starting on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()
 
 	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
-	// Accept graceful shutdowns when quit via SIGINT (Ctrl+C) or SIGTERM
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-
 	log.Println("Shutting down server...")
 
-	// Give outstanding requests 10 seconds to complete
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	// Graceful shutdown with timeout
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
 	log.Println("Server exited")
 }
 
-// CORSMiddleware adds CORS headers to responses
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Device-SN, X-Environment")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+func setupRoutes(router *gin.Engine, kvStore kv.KV) {
+	// Health check
+	router.GET("/health", handlers.HealthHandler)
 
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
+	// Root
+	router.GET("/", handlers.RootHandler)
 
-		c.Next()
-	}
-}
-
-// LoggingMiddleware logs request details
-func LoggingMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		path := c.Request.URL.Path
-		raw := c.Request.URL.RawQuery
-
-		// Process request
-		c.Next()
-
-		// Log after request
-		latency := time.Since(start)
-		clientIP := c.ClientIP()
-		method := c.Request.Method
-		statusCode := c.Writer.Status()
-
-		if raw != "" {
-			path = path + "?" + raw
-		}
-
-		log.Printf("[%s] %s %s - Status: %d - Latency: %v - IP: %s",
-			method, path, c.Request.Proto, statusCode, latency, clientIP)
-
-		// Log errors if any
-		if len(c.Errors) > 0 {
-			for _, e := range c.Errors {
-				log.Printf("Error: %v", e.Err)
-			}
-		}
-	}
+	// API v1 routes
+	// v1 := router.Group("/api/v1")
+	// {
+	// 	// Add your API routes here
+	// 	// Example: v1.GET("/items", handlers.GetItems)
+	// }
 }
