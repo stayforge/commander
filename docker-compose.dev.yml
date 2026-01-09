@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  commander:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: commander-dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Server Configuration
+      - SERVER_PORT=8080
+      - ENVIRONMENT=STANDARD
+      
+      # Database Configuration (choose one)
+      # Option 1: BBolt (default)
+      - DATABASE=bbolt
+      - DATA_PATH=/var/lib/stayforge/commander
+      
+      # Option 2: MongoDB
+      # - DATABASE=mongodb
+      # - MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/
+      
+      # Option 3: Redis
+      # - DATABASE=redis
+      # - REDIS_URI=redis://:password@redis:6379/0
+    volumes:
+      # For BBolt: persist data
+      - commander-dev-data:/var/lib/stayforge/commander
+      # Mount source code for development (optional, if you want to rebuild)
+      # - ./:/app
+    # Health check: Distroless doesn't have shell or common tools
+    # For development, you can use external tools to check http://localhost:8080/health
+    # healthcheck:
+    #   test: ["CMD", "true"]  # Placeholder - use external monitoring
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    networks:
+      - commander-dev-network
+
+  # Optional: Redis for development
+  redis:
+    image: redis:7-alpine
+    container_name: commander-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-dev-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - commander-dev-network
+    profiles:
+      - redis
+
+  # Optional: MongoDB for development
+  mongodb:
+    image: mongo:7
+    container_name: commander-mongodb-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongodb-dev-data:/data/db
+    networks:
+      - commander-dev-network
+    profiles:
+      - mongodb
+
+volumes:
+  commander-dev-data:
+    driver: local
+  redis-dev-data:
+    driver: local
+  mongodb-dev-data:
+    driver: local
+
+networks:
+  commander-dev-network:
+    driver: bridge
+
