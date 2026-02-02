@@ -1,0 +1,19 @@
+# Test coverage configuration
+# Files to exclude from coverage reporting
+
+profile: coverage.out
+local-prefix: commander
+threshold: 80
+
+override:
+  # Exclude main.go from coverage - it's the entry point
+  cmd/server/main.go: 0
+  
+  # Exclude example.go from coverage - it's example code
+  internal/database/example.go: 0
+
+exclude:
+  # Exclude paths from coverage
+  paths:
+    - "cmd/server/main.go"
+    - "internal/database/example.go"

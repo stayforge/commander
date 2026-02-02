@@ -1,3 +1,6 @@
+// This file is excluded from test coverage as it's example code
+//go:build exclude_from_coverage
+
 package database
 
 import (
