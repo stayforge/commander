@@ -10,11 +10,14 @@ import (
 	"time"
 
 	"commander/internal/kv"
+
 	"github.com/redis/go-redis/v9"
 )
 
 // RedisKV implements KV interface using Redis
 // Key format: <namespace>:<collection>:<key>
+//
+//nolint:revive // RedisKV name is intentional to match package name
 type RedisKV struct {
 	client *redis.Client
 }
@@ -42,7 +45,7 @@ func NewRedisKV(uri string) (*RedisKV, error) {
 	if addr == "" {
 		addr = "localhost:6379"
 	} else if !strings.Contains(addr, ":") {
-		addr = addr + ":6379"
+		addr += ":6379"
 	}
 
 	password := ""
@@ -137,4 +140,3 @@ func (r *RedisKV) Close() error {
 func (r *RedisKV) Ping(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
 }
-

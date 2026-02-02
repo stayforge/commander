@@ -35,6 +35,7 @@ type KVConfig struct {
 // BackendType represents the type of KV backend
 type BackendType string
 
+// Available KV backend types
 const (
 	BackendMongoDB BackendType = "mongodb"
 	BackendRedis   BackendType = "redis"

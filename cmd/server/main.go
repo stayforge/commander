@@ -18,15 +18,16 @@ import (
 )
 
 var (
-	version = "dev" // 默認值
-	commit  = "unknown"
-	date    = "unknown"
+	version = "dev"     // 默認值
+	commit  = "unknown" // set via ldflags during build
+	date    = "unknown" // set via ldflags during build
 )
 
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
 	cfg.Version = version
+	log.Printf("Commander version: %s (commit: %s, built: %s)", version, commit, date)
 
 	// Set Gin mode based on environment
 	if cfg.Server.Environment == "PRODUCTION" {
@@ -38,14 +39,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize KV store: %v", err)
 	}
-	defer kvStore.Close()
+	defer func() {
+		if closeErr := kvStore.Close(); closeErr != nil {
+			log.Printf("Failed to close KV store: %v", closeErr)
+		}
+	}()
 
 	// Verify KV connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	if err := kvStore.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping KV store: %v", err)
+		cancel()
+		log.Fatalf("Failed to ping KV store: %v", err) //nolint:gocritic // Intentional exit on startup failure
 	}
+	cancel()
 
 	// Create Gin router
 	router := gin.Default()
@@ -91,7 +97,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRoutes(router *gin.Engine, kvStore kv.KV) {
+func setupRoutes(router *gin.Engine, _ kv.KV) {
 	// Health check
 	router.GET("/health", handlers.HealthHandler)
 
@@ -102,6 +108,6 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV) {
 	// v1 := router.Group("/api/v1")
 	// {
 	// 	// Add your API routes here
-	// 	// Example: v1.GET("/items", handlers.GetItems)
+	// 	// Example: v1.GET("/items", handlers.GetItems(kvStore))
 	// }
 }

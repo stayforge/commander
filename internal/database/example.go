@@ -19,13 +19,18 @@ func ExampleUsage() {
 	if err != nil {
 		log.Fatalf("Failed to create KV store: %v", err)
 	}
-	defer kv.Close()
+	defer func() {
+		if closeErr := kv.Close(); closeErr != nil {
+			log.Printf("Failed to close KV store: %v", closeErr)
+		}
+	}()
 
 	ctx := context.Background()
 
 	// Ping to check connection
-	if err := kv.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping KV store: %v", err)
+	if pingErr := kv.Ping(ctx); pingErr != nil {
+		_ = kv.Close()                                     //nolint:errcheck // Best effort close before exit
+		log.Fatalf("Failed to ping KV store: %v", pingErr) //nolint:gocritic // Example code intentionally exits
 	}
 
 	// Define namespace and collection
@@ -41,11 +46,14 @@ func ExampleUsage() {
 		"devices":     []string{"device-001", "device-002"},
 		"status":      "active",
 	}
-	valueBytes, _ := json.Marshal(value)
+	valueBytes, marshalErr := json.Marshal(value)
+	if marshalErr != nil {
+		log.Fatalf("Failed to marshal value: %v", marshalErr)
+	}
 
 	// Set a value with namespace and collection
-	if err := kv.Set(ctx, namespace, collection, key, valueBytes); err != nil {
-		log.Fatalf("Failed to set value: %v", err)
+	if setErr := kv.Set(ctx, namespace, collection, key, valueBytes); setErr != nil {
+		log.Fatalf("Failed to set value: %v", setErr)
 	}
 	fmt.Printf("Set key: %s in namespace: %s, collection: %s\n", key, namespace, collection)
 
@@ -69,4 +77,3 @@ func ExampleUsage() {
 	}
 	fmt.Printf("Deleted key: %s\n", key)
 }
-
