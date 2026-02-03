@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,149 +13,249 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func TestCardVerificationHandler_InvalidParameters(t *testing.T) {
+func TestCardVerificationHandler_POST_MissingHeader(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-
-	// Mock CardService (will not be called)
-	mockService := services.NewCardService(&mongo.Client{})
-
-	tests := []struct {
-		name         string
-		namespace    string
-		deviceSN     string
-		cardNumber   string
-		expectBadReq bool
-	}{
-		{
-			name:         "all parameters present",
-			namespace:    "org_test",
-			deviceSN:     "SN001",
-			cardNumber:   "card001",
-			expectBadReq: false, // Will fail during verification (no mock data), but params are valid
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			router := gin.New()
-			router.GET("/test/:namespace/device/:device_sn/card/:card_number",
-				CardVerificationHandler(mockService))
-
-			url := fmt.Sprintf("/test/%s/device/%s/card/%s", tt.namespace, tt.deviceSN, tt.cardNumber)
-			req, _ := http.NewRequest(http.MethodGet, url, nil)
-			w := httptest.NewRecorder()
-
-			router.ServeHTTP(w, req)
-
-			if tt.expectBadReq {
-				assert.Equal(t, http.StatusBadRequest, w.Code)
-				assert.Contains(t, w.Body.String(), "invalid_parameters")
-			}
-		})
-	}
-}
-
-func TestCardVerificationVguang350Handler_InvalidParameters(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	// Mock CardService
 	mockService := services.NewCardService(&mongo.Client{})
 
 	router := gin.New()
-	router.GET("/test/:namespace/device/:device_sn/card/:card_number/vguang-350",
-		CardVerificationVguang350Handler(mockService))
+	router.POST("/api/v1/namespaces/:namespace", CardVerificationHandler(mockService))
 
-	// Test with missing parameters
-	req, _ := http.NewRequest(http.MethodGet, "/test//device//card//vguang-350", nil)
+	// Missing X-Device-SN header
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test", bytes.NewBufferString("card001"))
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid_parameters")
+	assert.Empty(t, w.Body.String())
 }
 
-func TestErrorResponseFormats(t *testing.T) {
+func TestCardVerificationHandler_POST_EmptyBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockService := services.NewCardService(&mongo.Client{})
+
+	router := gin.New()
+	router.POST("/api/v1/namespaces/:namespace", CardVerificationHandler(mockService))
+
+	// Empty body
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test", bytes.NewBufferString(""))
+	req.Header.Set("X-Device-SN", "SN001")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Empty(t, w.Body.String())
+}
+
+func TestCardVerificationHandler_POST_ValidRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockService := services.NewCardService(&mongo.Client{})
+
+	router := gin.New()
+	router.POST("/api/v1/namespaces/:namespace", CardVerificationHandler(mockService))
+
+	// Valid request format (will fail verification due to no mock data)
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test", bytes.NewBufferString("card001"))
+	req.Header.Set("X-Device-SN", "SN001")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	// Should return error status (no mock DB)
+	assert.NotEqual(t, http.StatusBadRequest, w.Code)
+	assert.Empty(t, w.Body.String())
+}
+
+func TestCardVerificationVguangHandler_POST_EmptyBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockService := services.NewCardService(&mongo.Client{})
+
+	router := gin.New()
+	router.POST("/api/v1/namespaces/:namespace/device/:device_name", CardVerificationVguangHandler(mockService))
+
+	// Empty body
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test/device/SN001", bytes.NewBufferString(""))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Empty(t, w.Body.String())
+}
+
+func TestCardVerificationVguangHandler_POST_ValidRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockService := services.NewCardService(&mongo.Client{})
+
+	router := gin.New()
+	router.POST("/api/v1/namespaces/:namespace/device/:device_name", CardVerificationVguangHandler(mockService))
+
+	// Valid request format (will fail verification due to no mock data)
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test/device/SN001", bytes.NewBufferString("card001"))
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	// Should return error status (no mock DB)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Empty(t, w.Body.String())
+}
+
+func TestParseVguangCardNumber(t *testing.T) {
 	tests := []struct {
-		name         string
-		errorCode    string
-		errorMessage string
-		statusCode   int
+		name     string
+		input    []byte
+		expected string
 	}{
 		{
-			name:         "device_not_found",
-			errorCode:    "device_not_found",
-			errorMessage: "Device not found",
-			statusCode:   http.StatusNotFound,
+			name:     "alphanumeric lowercase",
+			input:    []byte("abc123"),
+			expected: "ABC123",
 		},
 		{
-			name:         "card_not_found",
-			errorCode:    "card_not_found",
-			errorMessage: "Card not found",
-			statusCode:   http.StatusNotFound,
+			name:     "alphanumeric uppercase",
+			input:    []byte("ABC123"),
+			expected: "ABC123",
 		},
 		{
-			name:         "device_not_active",
-			errorCode:    "device_not_active",
-			errorMessage: "Device is not active",
-			statusCode:   http.StatusForbidden,
+			name:     "alphanumeric mixed",
+			input:    []byte("AbC123"),
+			expected: "ABC123",
 		},
 		{
-			name:         "card_not_authorized",
-			errorCode:    "card_not_authorized",
-			errorMessage: "Card is not authorized for this device",
-			statusCode:   http.StatusForbidden,
+			name:     "binary data - 4 bytes",
+			input:    []byte{0x01, 0x02, 0x03, 0x04},
+			expected: "04030201", // reversed hex
 		},
 		{
-			name:         "card_expired",
-			errorCode:    "card_expired",
-			errorMessage: "Card has expired",
-			statusCode:   http.StatusForbidden,
+			name:     "binary data - single byte",
+			input:    []byte{0xFF},
+			expected: "FF",
 		},
 		{
-			name:         "card_not_yet_valid",
-			errorCode:    "card_not_yet_valid",
-			errorMessage: "Card is not yet valid",
-			statusCode:   http.StatusForbidden,
+			name:     "empty input",
+			input:    []byte{},
+			expected: "",
+		},
+		{
+			name:     "whitespace only",
+			input:    []byte("   "),
+			expected: "202020", // After trim empty, treated as binary: 3 spaces reversed = 0x20 0x20 0x20 = "202020"
+		},
+		{
+			name:     "mixed alphanumeric with spaces",
+			input:    []byte("  ABC123  "),
+			expected: "ABC123", // Spaces trimmed, then treated as alphanumeric
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Map error code to service error
-			var err error
-			switch tt.errorCode {
-			case "device_not_found":
-				err = services.ErrDeviceNotFound
-			case "device_not_active":
-				err = services.ErrDeviceNotActive
-			case "card_not_found":
-				err = services.ErrCardNotFound
-			case "card_not_authorized":
-				err = services.ErrCardNotAuthorized
-			case "card_expired":
-				err = services.ErrCardExpired
-			case "card_not_yet_valid":
-				err = services.ErrCardNotYetValid
-			}
+			result := parseVguangCardNumber(tt.input)
+			assert.Equal(t, tt.expected, result, "card number parsing failed")
+		})
+	}
+}
 
-			gin.SetMode(gin.TestMode)
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Params = []gin.Param{
-				{Key: "namespace", Value: "org_test"},
-				{Key: "device_sn", Value: "SN001"},
-				{Key: "card_number", Value: "card001"},
-			}
+func TestIsAlphanumeric(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "alphanumeric lowercase",
+			input:    "abc123",
+			expected: true,
+		},
+		{
+			name:     "alphanumeric uppercase",
+			input:    "ABC123",
+			expected: true,
+		},
+		{
+			name:     "alphanumeric mixed",
+			input:    "AbC123",
+			expected: true,
+		},
+		{
+			name:     "with special character",
+			input:    "ABC123!",
+			expected: false,
+		},
+		{
+			name:     "with space",
+			input:    "ABC 123",
+			expected: false,
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: true, // Technically all chars (none) are alphanumeric
+		},
+		{
+			name:     "only digits",
+			input:    "12345",
+			expected: true,
+		},
+		{
+			name:     "only letters",
+			input:    "ABCDE",
+			expected: true,
+		},
+	}
 
-			handleVerificationError(c, err, "org_test", "SN001", "card001")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isAlphanumeric(tt.input)
+			assert.Equal(t, tt.expected, result, "alphanumeric check failed")
+		})
+	}
+}
 
-			assert.Equal(t, tt.statusCode, w.Code)
-			assert.Contains(t, w.Body.String(), tt.errorCode)
-			assert.Contains(t, w.Body.String(), "org_test")
-			assert.Contains(t, w.Body.String(), "SN001")
-			assert.Contains(t, w.Body.String(), "card001")
-			assert.Contains(t, w.Body.String(), "timestamp")
+func TestMapErrorToStatusCode(t *testing.T) {
+	tests := []struct {
+		name         string
+		err          error
+		expectedCode int
+	}{
+		{
+			name:         "device not found",
+			err:          services.ErrDeviceNotFound,
+			expectedCode: http.StatusNotFound,
+		},
+		{
+			name:         "card not found",
+			err:          services.ErrCardNotFound,
+			expectedCode: http.StatusNotFound,
+		},
+		{
+			name:         "device not active",
+			err:          services.ErrDeviceNotActive,
+			expectedCode: http.StatusForbidden,
+		},
+		{
+			name:         "card not authorized",
+			err:          services.ErrCardNotAuthorized,
+			expectedCode: http.StatusForbidden,
+		},
+		{
+			name:         "card expired",
+			err:          services.ErrCardExpired,
+			expectedCode: http.StatusForbidden,
+		},
+		{
+			name:         "card not yet valid",
+			err:          services.ErrCardNotYetValid,
+			expectedCode: http.StatusForbidden,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code := mapErrorToStatusCode(tt.err)
+			assert.Equal(t, tt.expectedCode, code, "status code mapping failed")
 		})
 	}
 }

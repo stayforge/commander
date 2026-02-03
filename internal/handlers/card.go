@@ -1,38 +1,58 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"errors"
+	"io"
+	"log"
 	"net/http"
-	"time"
+	"strings"
 
 	"commander/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-// CardVerificationHandler handles standard card verification
-// GET /api/v1/namespaces/:namespace/device/:device_sn/card/:card_number
-// Returns: 204 No Content (success) or error JSON
+// CardVerificationHandler handles standard card verification via POST
+// POST /api/v1/namespaces/:namespace
+// Header: X-Device-SN: <device_sn>
+// Body: plain text card number
+// Success: 204 No Content
+// Error: status code only (no body, logged to console)
 func CardVerificationHandler(cardService *services.CardService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
-		deviceSN := c.Param("device_sn")
-		cardNumber := c.Param("card_number")
+		deviceSN := c.GetHeader("X-Device-SN")
 
-		// Validate parameters
-		if namespace == "" || deviceSN == "" || cardNumber == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":     "invalid_parameters",
-				"message":   "namespace, device_sn, and card_number are required",
-				"timestamp": time.Now().Format(time.RFC3339),
-			})
+		// Validate header
+		if deviceSN == "" {
+			log.Printf("[CardVerification] Missing X-Device-SN header: namespace=%s", namespace)
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		// Read body (plain text card number)
+		rawBody, err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			log.Printf("[CardVerification] Failed to read body: namespace=%s, device_sn=%s, error=%v",
+				namespace, deviceSN, err)
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		cardNumber := strings.TrimSpace(string(rawBody))
+		if cardNumber == "" {
+			log.Printf("[CardVerification] Empty card number: namespace=%s, device_sn=%s",
+				namespace, deviceSN)
+			c.Status(http.StatusBadRequest)
 			return
 		}
 
 		// Verify card
-		err := cardService.VerifyCard(c.Request.Context(), namespace, deviceSN, cardNumber)
+		err = cardService.VerifyCard(c.Request.Context(), namespace, deviceSN, cardNumber)
 		if err != nil {
-			handleVerificationError(c, err, namespace, deviceSN, cardNumber)
+			// Error logging already done in CardService
+			c.Status(mapErrorToStatusCode(err))
 			return
 		}
 
@@ -41,86 +61,97 @@ func CardVerificationHandler(cardService *services.CardService) gin.HandlerFunc 
 	}
 }
 
-// CardVerificationVguang350Handler handles vguang-350 model compatibility
-// GET /api/v1/namespaces/:namespace/device/:device_sn/card/:card_number/vguang-350
-// Returns: 200 + "0000" (success) or error JSON
-func CardVerificationVguang350Handler(cardService *services.CardService) gin.HandlerFunc {
+// CardVerificationVguangHandler handles vguang-m350 device compatibility
+// POST /api/v1/namespaces/:namespace/device/:device_name
+// Body: plain text or binary card number
+// Success: 200 "code=0000"
+// Error: 404 (no body, logged to console)
+func CardVerificationVguangHandler(cardService *services.CardService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
-		deviceSN := c.Param("device_sn")
-		cardNumber := c.Param("card_number")
+		deviceName := c.Param("device_name")
 
-		// Validate parameters
-		if namespace == "" || deviceSN == "" || cardNumber == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":     "invalid_parameters",
-				"message":   "namespace, device_sn, and card_number are required",
-				"timestamp": time.Now().Format(time.RFC3339),
-			})
-			return
-		}
-
-		// Verify card (same logic as standard endpoint)
-		err := cardService.VerifyCard(c.Request.Context(), namespace, deviceSN, cardNumber)
+		// Read body
+		rawBody, err := io.ReadAll(c.Request.Body)
 		if err != nil {
-			handleVerificationError(c, err, namespace, deviceSN, cardNumber)
+			log.Printf("[CardVerification:vguang] Failed to read body: namespace=%s, device_name=%s, error=%v",
+				namespace, deviceName, err)
+			c.Status(http.StatusNotFound)
 			return
 		}
 
-		// Success - return 200 + plain text "0000" for vguang-350 compatibility
-		c.String(http.StatusOK, "0000")
+		// Parse card number (vguang special logic)
+		cardNumber := parseVguangCardNumber(rawBody)
+		if cardNumber == "" {
+			log.Printf("[CardVerification:vguang] Empty card number: namespace=%s, device_name=%s",
+				namespace, deviceName)
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		// Verify card
+		err = cardService.VerifyCard(c.Request.Context(), namespace, deviceName, cardNumber)
+		if err != nil {
+			// Error logging already done in CardService
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		// Success - must return "code=0000" (exact match for vguang-m350)
+		c.String(http.StatusOK, "code=0000")
 	}
 }
 
-// handleVerificationError handles verification errors and returns appropriate HTTP response
-func handleVerificationError(c *gin.Context, err error, namespace, deviceSN, cardNumber string) {
-	var statusCode int
-	var errorCode string
-	var message string
-
-	switch {
-	case errors.Is(err, services.ErrDeviceNotFound):
-		statusCode = http.StatusNotFound
-		errorCode = "device_not_found"
-		message = "Device not found"
-
-	case errors.Is(err, services.ErrDeviceNotActive):
-		statusCode = http.StatusForbidden
-		errorCode = "device_not_active"
-		message = "Device is not active"
-
-	case errors.Is(err, services.ErrCardNotFound):
-		statusCode = http.StatusNotFound
-		errorCode = "card_not_found"
-		message = "Card not found"
-
-	case errors.Is(err, services.ErrCardNotAuthorized):
-		statusCode = http.StatusForbidden
-		errorCode = "card_not_authorized"
-		message = "Card is not authorized for this device"
-
-	case errors.Is(err, services.ErrCardExpired):
-		statusCode = http.StatusForbidden
-		errorCode = "card_expired"
-		message = "Card has expired"
-
-	case errors.Is(err, services.ErrCardNotYetValid):
-		statusCode = http.StatusForbidden
-		errorCode = "card_not_yet_valid"
-		message = "Card is not yet valid"
-
-	default:
-		statusCode = http.StatusInternalServerError
-		errorCode = "internal_error"
-		message = "Internal server error"
+// parseVguangCardNumber parses card number from vguang device
+// If alphanumeric: use as-is (uppercase)
+// Otherwise: reverse bytes and convert to hex (uppercase)
+func parseVguangCardNumber(rawBody []byte) string {
+	if len(rawBody) == 0 {
+		return ""
 	}
 
-	c.JSON(statusCode, gin.H{
-		"error":       errorCode,
-		"message":     message,
-		"namespace":   namespace,
-		"device_sn":   deviceSN,
-		"card_number": cardNumber,
-		"timestamp":   time.Now().Format(time.RFC3339),
-	})
+	// Try to decode as UTF-8 text
+	text := strings.TrimSpace(string(rawBody))
+
+	// Check if alphanumeric
+	if len(text) > 0 && isAlphanumeric(text) {
+		return strings.ToUpper(text)
+	}
+
+	// Otherwise reverse bytes and convert to hex
+	reversed := make([]byte, len(rawBody))
+	for i, b := range rawBody {
+		reversed[len(rawBody)-1-i] = b
+	}
+	return strings.ToUpper(hex.EncodeToString(reversed))
+}
+
+// isAlphanumeric checks if string contains only letters and digits
+func isAlphanumeric(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+			return false
+		}
+	}
+	return true
+}
+
+// mapErrorToStatusCode maps service errors to HTTP status codes
+func mapErrorToStatusCode(err error) int {
+	switch {
+	case errors.Is(err, services.ErrDeviceNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, services.ErrCardNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, services.ErrDeviceNotActive):
+		return http.StatusForbidden
+	case errors.Is(err, services.ErrCardNotAuthorized):
+		return http.StatusForbidden
+	case errors.Is(err, services.ErrCardExpired):
+		return http.StatusForbidden
+	case errors.Is(err, services.ErrCardNotYetValid):
+		return http.StatusForbidden
+	default:
+		return http.StatusInternalServerError
+	}
 }

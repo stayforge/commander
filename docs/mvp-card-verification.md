@@ -7,46 +7,44 @@ This document describes the MVP (Minimum Viable Product) card verification syste
 ## Architecture
 
 ```
-HTTP Request
+HTTP Request (POST)
     ↓
-CardVerificationHandler / CardVerificationVguang350Handler
+CardVerificationHandler / CardVerificationVguangHandler
     ↓
 CardService (business logic)
     ↓
 MongoDB (device & card collections)
     ↓
-Verification Result (204 No Content / 200 "0000" / error)
+Verification Result (204 / 200 "code=0000" / Status Only)
 ```
 
 ## Endpoints
 
-### Standard Card Verification
+### Standard Card Verification (New API)
 
-**Endpoint**: `GET /api/v1/namespaces/:namespace/device/:device_sn/card/:card_number`
+**Endpoint**: `POST /api/v1/namespaces/:namespace`
 
-**Parameters**:
-- `namespace` (string): MongoDB database name (e.g., `org_4e8fb2461d71963a`)
-- `device_sn` (string): Device serial number (e.g., `SN20250112001`)
-- `card_number` (string): Card number (e.g., `11110011`)
+**Headers**:
+- `X-Device-SN` (required): Device serial number (e.g., `SN20250112001`)
+
+**Body**: Plain text card number (e.g., `11110011`)
 
 **Success Response**:
 - Status: `204 No Content`
 - Body: Empty
 
-**Error Responses**:
-
-| Error | Status | Response |
-|-------|--------|----------|
-| Device not found | 404 | `{"error": "device_not_found", "message": "Device not found", ...}` |
-| Device not active | 403 | `{"error": "device_not_active", "message": "Device is not active", ...}` |
-| Card not found | 404 | `{"error": "card_not_found", "message": "Card not found", ...}` |
-| Card not authorized | 403 | `{"error": "card_not_authorized", "message": "Card is not authorized for this device", ...}` |
-| Card expired | 403 | `{"error": "card_expired", "message": "Card has expired", ...}` |
-| Card not yet valid | 403 | `{"error": "card_not_yet_valid", "message": "Card is not yet valid", ...}` |
+**Error Response**:
+- Status: `400 Bad Request` (missing header or empty body)
+- Status: `403 Forbidden` (not authorized/expired)
+- Status: `404 Not Found` (device/card not found)
+- Body: Empty (error logged to console)
 
 **Example Request**:
 ```bash
-curl -v http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001/card/11110011
+curl -X POST \
+  -H "X-Device-SN: SN20250112001" \
+  -d "11110011" \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
 ```
 
 **Example Response (Success)**:
@@ -55,33 +53,37 @@ HTTP/1.1 204 No Content
 ```
 
 **Example Response (Error)**:
-```json
-{
-  "error": "device_not_found",
-  "message": "Device not found",
-  "namespace": "org_4e8fb2461d71963a",
-  "device_sn": "SN20250112001",
-  "card_number": "11110011",
-  "timestamp": "2026-02-03T14:30:00Z"
-}
+```
+HTTP/1.1 404 Not Found
+(no body)
 ```
 
-### vguang-350 Compatibility Endpoint
+---
 
-**Endpoint**: `GET /api/v1/namespaces/:namespace/device/:device_sn/card/:card_number/vguang-350`
+### vguang-m350 Compatibility (Legacy API)
 
-**Parameters**: Same as standard endpoint
+**Endpoint**: `POST /api/v1/namespaces/:namespace/device/:device_name`
+
+**Body**: Plain text or binary card number
+
+**Card Number Processing**:
+- If alphanumeric: use as-is (converted to uppercase)
+- Otherwise: reverse bytes and convert to hex (uppercase)
 
 **Success Response**:
 - Status: `200 OK`
 - Content-Type: `text/plain`
-- Body: `0000`
+- Body: `code=0000`
 
-**Error Response**: Same as standard endpoint (JSON format)
+**Error Response**:
+- Status: `404 Not Found`
+- Body: Empty (error logged to console)
 
-**Example Request**:
+**Example Request (Plain Text)**:
 ```bash
-curl -v http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001/card/11110011/vguang-350
+curl -X POST \
+  -d "11110011" \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
 ```
 
 **Example Response (Success)**:
@@ -89,14 +91,23 @@ curl -v http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20
 HTTP/1.1 200 OK
 Content-Type: text/plain
 
-0000
+code=0000
 ```
+
+**Example Request (Binary)**:
+```bash
+# Binary card data will be reversed and converted to hex
+echo -ne '\x01\x02\x03\x04' | curl -X POST -d @- \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+```
+
+---
 
 ## Verification Logic
 
 ### Step 1: Device Validation
 
-- Check if device exists in `devices` collection
+- Check if device exists in `devices` collection (by `sn` field)
 - Verify device's `status` field equals `"active"`
 - Abort if device not found or inactive
 
@@ -126,6 +137,8 @@ tolerance:    ±60 seconds
 Valid range: 2026-08-25 14:59:00 to 2026-08-25 16:01:00
 ```
 
+---
+
 ## MongoDB Data Structures
 
 ### Devices Collection
@@ -150,7 +163,7 @@ Valid range: 2026-08-25 14:59:00 to 2026-08-25 16:01:00
 ```
 
 **Key Fields**:
-- `sn`: Serial number (matched against `device_sn` parameter)
+- `sn`: Serial number (matched against `X-Device-SN` header or `:device_name` URL parameter)
 - `status`: Device status (must be `"active"`)
 
 ### Cards Collection
@@ -171,10 +184,12 @@ Valid range: 2026-08-25 14:59:00 to 2026-08-25 16:01:00
 ```
 
 **Key Fields**:
-- `number`: Card number (matched against `card_number` parameter)
+- `number`: Card number (matched against request body)
 - `devices`: Array of device SNs this card is authorized for (empty = not authorized)
 - `effective_at`: When the card becomes valid
 - `invalid_at`: When the card expires
+
+---
 
 ## Configuration
 
@@ -203,9 +218,11 @@ SERVER_PORT=8080
 ENVIRONMENT=STANDARD
 ```
 
+---
+
 ## Logging
 
-All verification operations are logged with level `INFO`. Log entries include:
+All verification operations are logged to console with `[CardVerification]` prefix.
 
 **Device Verification**:
 ```
@@ -222,7 +239,10 @@ All verification operations are logged with level `INFO`. Log entries include:
 [CardVerification] Device check failed: namespace=org_test, device_sn=unknown, error=device not found
 [CardVerification] Device not active: namespace=org_test, device_sn=SN001, status=inactive
 [CardVerification] Card expired: namespace=org_test, card_number=11110011, device_sn=SN001, invalid_at=2026-08-25T16:00:00Z, current_time=2026-08-25T16:02:00Z
+[CardVerification:vguang] Failed to read body: namespace=org_test, device_name=SN001, error=<error>
 ```
+
+---
 
 ## Testing
 
@@ -237,71 +257,88 @@ go test ./internal/handlers -v -run Card
 
 ### Manual Testing with curl
 
-**Test 1: Valid card verification**
+**Test 1: Standard API - Valid verification**
 ```bash
-curl -v \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001/card/11110011
+curl -X POST \
+  -H "X-Device-SN: SN20250112001" \
+  -d "11110011" \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
 
 # Expected: 204 No Content
 ```
 
-**Test 2: Device not found**
+**Test 2: Standard API - Missing header**
 ```bash
-curl -v \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/INVALID_SN/card/11110011
+curl -X POST \
+  -d "11110011" \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
 
-# Expected: 404 with error_code "device_not_found"
+# Expected: 400 Bad Request (no body)
 ```
 
-**Test 3: Card expired**
+**Test 3: Standard API - Device not found**
 ```bash
-# First, insert a card with past invalid_at in MongoDB:
-db.cards.insertOne({
-  number: "expired_card",
-  devices: ["SN20250112001"],
-  effective_at: ISODate("2020-01-01T00:00:00Z"),
-  invalid_at: ISODate("2020-01-02T00:00:00Z")
-})
+curl -X POST \
+  -H "X-Device-SN: INVALID_SN" \
+  -d "11110011" \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
 
-curl -v \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001/card/expired_card
-
-# Expected: 403 with error_code "card_expired"
+# Expected: 404 Not Found (no body)
 ```
 
-**Test 4: vguang-350 compatibility**
+**Test 4: vguang-m350 - Valid verification (plain text)**
 ```bash
-curl -v \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001/card/11110011/vguang-350
+curl -X POST \
+  -d "11110011" \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
 
-# Expected: 200 OK with plain text body "0000"
+# Expected: 200 OK
+# Body: code=0000
 ```
+
+**Test 5: vguang-m350 - Card not found**
+```bash
+curl -X POST \
+  -d "nonexistent_card" \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+
+# Expected: 404 Not Found (no body)
+```
+
+**Test 6: vguang-m350 - Binary card data**
+```bash
+# Simulate binary card reader output
+echo -ne '\x01\x02\x03\x04' | curl -X POST -d @- \
+  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+
+# Card number will be: 04030201 (reversed hex)
+# Expected: 200 OK or 404 (depending on card existence)
+```
+
+---
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Issue**: Card verification always returns 404 (device not found)
-- **Solution**: Verify device exists in MongoDB `devices` collection with correct `sn` field
-- **Check**: `db.devices.findOne({sn: "SN20250112001"})`
+**Issue**: Standard API returns 400 Bad Request
+- **Solution**: Verify `X-Device-SN` header is present and body is not empty
+- **Check**: `curl -v` to inspect headers and body
 
-**Issue**: Card verification returns 403 (device not active)
-- **Solution**: Update device status to `"active"` in MongoDB
-- **Check**: `db.devices.updateOne({sn: "SN20250112001"}, {$set: {status: "active"}})`
+**Issue**: vguang API always returns 404
+- **Cause**: Device or card not found in MongoDB
+- **Check**: Verify device exists with correct SN: `db.devices.findOne({sn: "SN20250112001"})`
+- **Check**: Verify card exists with correct number: `db.cards.findOne({number: "11110011"})`
 
-**Issue**: Card verification returns 403 (card not authorized)
-- **Solution**: Verify device SN is in card's `devices` array
-- **Check**: `db.cards.findOne({number: "11110011"})` and confirm `"SN20250112001"` is in `devices` array
+**Issue**: Card verification returns 403 (not authorized)
+- **Cause**: Card not authorized for device or time not valid
+- **Check**: Verify device SN is in card's `devices` array
+- **Check**: Verify current time is within effective/invalid date range (±60s)
 
-**Issue**: Card verification returns 403 (card expired)
-- **Solution**: Check `effective_at` and `invalid_at` values are correct
-- **Check**: `db.cards.findOne({number: "11110011"})` to view timestamps
+**Issue**: Response body is empty instead of JSON
+- **Note**: This is expected behavior for errors in the new system - check HTTP status code and console logs
 
-### Performance Notes
-
-- Response time typically <100ms for valid cards (single device/card lookup)
-- MongoDB connection pooling is managed by the KV layer
-- No caching is implemented in MVP (can be added in future versions)
+---
 
 ## Future Enhancements
 
@@ -314,11 +351,21 @@ curl -v \
 7. **Webhook Notifications**: Notify external systems of verification results
 8. **Multi-tenant Support**: Enforce namespace isolation at application level
 
-## Architecture Notes
+---
 
-The MVP implementation uses direct MongoDB access (not through the KV abstraction layer) for:
-- Complex MongoDB queries (array containment, time range queries)
-- Better error handling and logging specific to card verification
-- Flexibility in data structure handling
+## API Summary
 
-This design allows rapid iteration on the MVP without restructuring the KV interface. Future versions can integrate this functionality into the KV layer when the query requirements stabilize.
+| Method | Endpoint | Purpose | Success | Error |
+|--------|----------|---------|---------|-------|
+| POST | `/api/v1/namespaces/:namespace` | Standard verification | 204 No Content | Status only |
+| POST | `/api/v1/namespaces/:namespace/device/:device_name` | vguang-m350 compatibility | 200 + "code=0000" | 404 |
+
+---
+
+## Notes
+
+- **Error responses contain no body** for security - errors are logged to console
+- **vguang-m350 response must be exact**: `"code=0000"` (not just `"0000"`)
+- **Card number in request body is always plain text** (even for vguang)
+- **Binary handling only in vguang endpoint** - reverses bytes and converts to hex
+- **±60 second tolerance** accounts for NTP clock drift on devices and servers

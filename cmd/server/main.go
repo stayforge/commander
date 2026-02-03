@@ -165,13 +165,18 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV, cardService *services.CardSe
 
 		// ========== Card Verification (MVP) ==========
 		if cardService != nil {
-			// Standard card verification endpoint
-			v1.GET("/namespaces/:namespace/device/:device_sn/card/:card_number",
+			// New standard API: POST /api/v1/namespaces/:namespace
+			// Header: X-Device-SN
+			// Body: plain text card number
+			// Response: 204 No Content (success) or status code only (error)
+			v1.POST("/namespaces/:namespace",
 				handlers.CardVerificationHandler(cardService))
 
-			// vguang-350 model compatibility endpoint
-			v1.GET("/namespaces/:namespace/device/:device_sn/card/:card_number/vguang-350",
-				handlers.CardVerificationVguang350Handler(cardService))
+			// Legacy vguang-m350 compatibility: POST /api/v1/namespaces/:namespace/device/:device_name
+			// Body: plain text or binary card number
+			// Response: 200 "code=0000" (success) or 404 (error)
+			v1.POST("/namespaces/:namespace/device/:device_name",
+				handlers.CardVerificationVguangHandler(cardService))
 		}
 	}
 }
