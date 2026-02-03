@@ -119,5 +119,15 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV) {
 
 		// HEAD /api/v1/kv/{namespace}/{collection}/{key}
 		v1.HEAD("/kv/:namespace/:collection/:key", handlers.HeadKVHandler(kvStore))
+
+		// Batch operations
+		// POST /api/v1/kv/batch (batch set)
+		v1.POST("/kv/batch", handlers.BatchSetHandler(kvStore))
+
+		// DELETE /api/v1/kv/batch (batch delete)
+		v1.DELETE("/kv/batch", handlers.BatchDeleteHandler(kvStore))
+
+		// GET /api/v1/kv/{namespace}/{collection} (list keys)
+		v1.GET("/kv/:namespace/:collection", handlers.ListKeysHandler(kvStore))
 	}
 }
