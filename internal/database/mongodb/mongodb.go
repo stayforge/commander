@@ -143,3 +143,9 @@ func (m *MongoDBKV) Close() error {
 func (m *MongoDBKV) Ping(ctx context.Context) error {
 	return m.client.Ping(ctx, nil)
 }
+
+// GetClient returns the underlying MongoDB client for advanced operations
+// This is used by business services that need MongoDB-specific features
+func (m *MongoDBKV) GetClient() *mongo.Client {
+	return m.client
+}

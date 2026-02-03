@@ -11,10 +11,13 @@ import (
 
 	"commander/internal/config"
 	"commander/internal/database"
+	"commander/internal/database/mongodb"
 	"commander/internal/handlers"
 	"commander/internal/kv"
+	"commander/internal/services"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 var (
@@ -53,6 +56,20 @@ func main() {
 	}
 	cancel()
 
+	// Initialize Card Service (only for MongoDB backend)
+	var cardService *services.CardService
+	if cfg.KV.BackendType == config.BackendMongoDB {
+		// Type assertion to get MongoDB client
+		if mongoKV, ok := kvStore.(*mongodb.MongoDBKV); ok {
+			cardService = services.NewCardService(mongoKV.GetClient())
+			log.Println("Card verification service initialized (MongoDB backend)")
+		} else {
+			log.Println("Warning: MongoDB backend expected but type assertion failed")
+		}
+	} else {
+		log.Printf("Card verification service not available (backend: %s, requires MongoDB)", cfg.KV.BackendType)
+	}
+
 	// Create Gin router
 	router := gin.Default()
 
@@ -64,7 +81,7 @@ func main() {
 	handlers.Config = cfg
 
 	// Register routes
-	setupRoutes(router, kvStore)
+	setupRoutes(router, kvStore, cardService)
 
 	// Create HTTP server
 	port := ":" + cfg.Server.Port
@@ -97,7 +114,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRoutes(router *gin.Engine, kvStore kv.KV) {
+func setupRoutes(router *gin.Engine, kvStore kv.KV, cardService *services.CardService) {
 	// Health check
 	router.GET("/health", handlers.HealthHandler)
 
@@ -107,43 +124,54 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV) {
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
-		// KV CRUD operations
+		// ========== KV CRUD operations (Commented for MVP) ==========
 		// GET /api/v1/kv/{namespace}/{collection}/{key}
-		v1.GET("/kv/:namespace/:collection/:key", handlers.GetKVHandler(kvStore))
+		// v1.GET("/kv/:namespace/:collection/:key", handlers.GetKVHandler(kvStore))
 
 		// POST /api/v1/kv/{namespace}/{collection}/{key}
-		v1.POST("/kv/:namespace/:collection/:key", handlers.SetKVHandler(kvStore))
+		// v1.POST("/kv/:namespace/:collection/:key", handlers.SetKVHandler(kvStore))
 
 		// DELETE /api/v1/kv/{namespace}/{collection}/{key}
-		v1.DELETE("/kv/:namespace/:collection/:key", handlers.DeleteKVHandler(kvStore))
+		// v1.DELETE("/kv/:namespace/:collection/:key", handlers.DeleteKVHandler(kvStore))
 
 		// HEAD /api/v1/kv/{namespace}/{collection}/{key}
-		v1.HEAD("/kv/:namespace/:collection/:key", handlers.HeadKVHandler(kvStore))
+		// v1.HEAD("/kv/:namespace/:collection/:key", handlers.HeadKVHandler(kvStore))
 
-		// Batch operations
+		// ========== Batch operations (Commented for MVP) ==========
 		// POST /api/v1/kv/batch (batch set)
-		v1.POST("/kv/batch", handlers.BatchSetHandler(kvStore))
+		// v1.POST("/kv/batch", handlers.BatchSetHandler(kvStore))
 
 		// DELETE /api/v1/kv/batch (batch delete)
-		v1.DELETE("/kv/batch", handlers.BatchDeleteHandler(kvStore))
+		// v1.DELETE("/kv/batch", handlers.BatchDeleteHandler(kvStore))
 
+		// ========== List and Management (Commented for MVP) ==========
 		// GET /api/v1/kv/{namespace}/{collection} (list keys)
-		v1.GET("/kv/:namespace/:collection", handlers.ListKeysHandler(kvStore))
+		// v1.GET("/kv/:namespace/:collection", handlers.ListKeysHandler(kvStore))
 
-		// Namespace and Collection management
 		// GET /api/v1/namespaces (list namespaces)
-		v1.GET("/namespaces", handlers.ListNamespacesHandler(kvStore))
+		// v1.GET("/namespaces", handlers.ListNamespacesHandler(kvStore))
 
 		// GET /api/v1/namespaces/{namespace}/collections (list collections)
-		v1.GET("/namespaces/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
+		// v1.GET("/namespaces/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
 
 		// GET /api/v1/namespaces/{namespace}/info (get namespace info)
-		v1.GET("/namespaces/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
+		// v1.GET("/namespaces/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
 
 		// DELETE /api/v1/namespaces/{namespace} (delete namespace)
-		v1.DELETE("/namespaces/:namespace", handlers.DeleteNamespaceHandler(kvStore))
+		// v1.DELETE("/namespaces/:namespace", handlers.DeleteNamespaceHandler(kvStore))
 
 		// DELETE /api/v1/namespaces/{namespace}/collections/{collection} (delete collection)
-		v1.DELETE("/namespaces/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
+		// v1.DELETE("/namespaces/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
+
+		// ========== Card Verification (MVP) ==========
+		if cardService != nil {
+			// Standard card verification endpoint
+			v1.GET("/namespaces/:namespace/device/:device_sn/card/:card_number",
+				handlers.CardVerificationHandler(cardService))
+
+			// vguang-350 model compatibility endpoint
+			v1.GET("/namespaces/:namespace/device/:device_sn/card/:card_number/vguang-350",
+				handlers.CardVerificationVguang350Handler(cardService))
+		}
 	}
 }
