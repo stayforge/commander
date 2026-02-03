@@ -1,14 +1,14 @@
-# 數據庫抽象層架構設計文檔
+# Database Abstraction Layer Architecture Documentation
 
-## 概述
+## Overview
 
-Commander 採用 **六邊形架構 (Hexagonal Architecture，又稱端口與適配器模式)** 設計數據庫抽象層，實現對多個數據庫後端的統一支持。本文詳細介紹整體設計、各個適配器的實現細節，以及如何基於此架構擴展新的功能。
+Commander employs a **Hexagonal Architecture (also known as Ports & Adapters Pattern)** to design its database abstraction layer, enabling unified support for multiple database backends. This document details the overall design, implementation specifics of each adapter, and how to extend the architecture with new backends.
 
 ---
 
-## 1. 整體架構圖
+## 1. Overall Architecture Diagram
 
-### 六邊形架構設計
+### Hexagonal Architecture Design
 
 ```mermaid
 graph TB
@@ -25,9 +25,9 @@ graph TB
     end
     
     subgraph "Adapter Layer"
-        BBolt["🔌 BBolt Adapter<br/>文件系統<br/>namespace → file<br/>collection → bucket"]
-        Redis["🔌 Redis Adapter<br/>內存緩存<br/>key: ns:coll:key"]
-        MongoDB["🔌 MongoDB Adapter<br/>文檔數據庫<br/>ns → db<br/>coll → collection"]
+        BBolt["🔌 BBolt Adapter<br/>File System<br/>namespace → file<br/>collection → bucket"]
+        Redis["🔌 Redis Adapter<br/>In-Memory Cache<br/>key: ns:coll:key"]
+        MongoDB["🔌 MongoDB Adapter<br/>Document Database<br/>ns → db<br/>coll → collection"]
     end
     
     subgraph "Backend Layer"
@@ -37,10 +37,10 @@ graph TB
     end
     
     HTTP --> Handler
-    Handler --> |依賴<br/>接口不是實現| Port
-    Port --> |實現| BBolt
-    Port --> |實現| Redis
-    Port --> |實現| MongoDB
+    Handler --> |Depends on<br/>Interface, not impl| Port
+    Port --> |Implements| BBolt
+    Port --> |Implements| Redis
+    Port --> |Implements| MongoDB
     BBolt --> BBoltDB
     Redis --> RedisDB
     MongoDB --> MongoDB_Actual
@@ -53,23 +53,23 @@ graph TB
     style MongoDB fill:#009688,stroke:#00695C,color:#fff
 ```
 
-**核心設計理念**：
-- **Port (端口)**：`kv.KV` 接口定義了統一的數據訪問契約
-- **Adapters (適配器)**：三個獨立的實現，分別適配不同的數據庫後端
-- **依賴方向**：Handlers 只依賴接口 (Port)，不依賴具體實現 (Adapters)
-- **優勢**：
-  - ✅ 支持運行時切換數據庫（通過環境變量）
-  - ✅ 易於測試（可以 mock KV 接口）
-  - ✅ 易於添加新的後端（只需實現 KV 接口）
-  - ✅ 業務邏輯與數據存儲解耦
+**Core Design Principles**:
+- **Port (Interface)**: The `kv.KV` interface defines a unified contract for data access
+- **Adapters**: Three independent implementations adapting different database backends
+- **Dependency Direction**: Handlers depend on the interface (Port), not concrete implementations (Adapters)
+- **Benefits**:
+  - ✅ Support runtime database switching via environment variables
+  - ✅ Easy to test (can mock KV interface)
+  - ✅ Easy to add new backends (just implement KV interface)
+  - ✅ Business logic decoupled from data storage
 
 ---
 
-## 2. KV 接口定義
+## 2. KV Interface Definition
 
-### Interface 簽名
+### Interface Signature
 
-位置：`internal/kv/kv.go`
+Location: `internal/kv/kv.go`
 
 ```go
 type KV interface {
@@ -93,18 +93,18 @@ type KV interface {
 }
 ```
 
-### 接口方法詳解
+### Interface Methods Reference
 
-| 方法 | 參數 | 返回值 | 說明 |
-|------|------|--------|------|
-| **Get** | namespace, collection, key | ([]byte, error) | 讀取 JSON 值，不存在返回 `ErrKeyNotFound` |
-| **Set** | namespace, collection, key, value | error | 保存 JSON 值，會覆蓋舊值 |
-| **Delete** | namespace, collection, key | error | 刪除鍵，不存在也返回成功 |
-| **Exists** | namespace, collection, key | (bool, error) | 檢查鍵是否存在 |
-| **Close** | - | error | 關閉連接，清理資源 |
-| **Ping** | ctx | error | 健康檢查，驗證連接可用 |
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| **Get** | namespace, collection, key | ([]byte, error) | Retrieves JSON value; returns `ErrKeyNotFound` if not exists |
+| **Set** | namespace, collection, key, value | error | Saves JSON value; overwrites existing value |
+| **Delete** | namespace, collection, key | error | Deletes key; returns success even if not exists |
+| **Exists** | namespace, collection, key | (bool, error) | Checks if key exists |
+| **Close** | - | error | Closes connection and cleans up resources |
+| **Ping** | ctx | error | Health check; verifies connection is alive |
 
-### 錯誤定義
+### Error Definitions
 
 ```go
 var (
@@ -113,13 +113,13 @@ var (
 )
 ```
 
-### 數據結構
+### Data Organization
 
-所有適配器統一使用以下邏輯層次：
+All adapters use a unified logical hierarchy:
 
 ```
-Namespace（命名空間）
-  ├── Collection 1（集合）
+Namespace (logical isolation)
+  ├── Collection 1 (data category)
   │   ├── Key 1 → Value (JSON bytes)
   │   ├── Key 2 → Value (JSON bytes)
   │   └── ...
@@ -129,18 +129,18 @@ Namespace（命名空間）
   └── ...
 ```
 
-**設計理由**：
-- Namespace 用於不同的應用/模塊隔離（如：app, mobile, admin）
-- Collection 用於同一命名空間內的數據分類（如：users, cards, settings）
-- Key 為具體的數據標識符（如：user_id, card_number）
+**Design Rationale**:
+- Namespace: Isolates data for different applications/modules (e.g., app, mobile, admin)
+- Collection: Categorizes data within the same namespace (e.g., users, cards, settings)
+- Key: Unique identifier for specific data (e.g., user_id, card_number)
 
 ---
 
-## 3. 工廠模式 (Factory Pattern)
+## 3. Factory Pattern (Dynamic Backend Selection)
 
-### 動態後端選擇
+### Backend Selection Logic
 
-位置：`internal/database/factory.go`
+Location: `internal/database/factory.go`
 
 ```go
 func NewKV(cfg *config.Config) (kv.KV, error) {
@@ -157,47 +157,47 @@ func NewKV(cfg *config.Config) (kv.KV, error) {
 }
 ```
 
-### 配置驅動
+### Configuration-Driven Selection
 
 ```bash
-# .env 文件中選擇後端
-KV_BACKEND_TYPE=mongodb  # 或 redis, bbolt
+# Select backend in .env file
+KV_BACKEND_TYPE=mongodb  # or redis, bbolt
 
-# MongoDB 後端配置
+# MongoDB backend configuration
 MONGODB_URI=mongodb://localhost:27017
 
-# Redis 後端配置
+# Redis backend configuration
 REDIS_URI=redis://localhost:6379
 
-# BBolt 後端配置
+# BBolt backend configuration
 BBOLT_PATH=/data/kv
 ```
 
-**優勢**：無需重新編譯代碼，通過環境變量切換後端
+**Advantage**: Switch backends without recompilation; environment variable based selection.
 
 ---
 
-## 4. 三個適配器實現對比
+## 4. Adapter Implementation Comparison
 
-### 映射策略對比表
+### Mapping Strategy Comparison Table
 
-| 概念 | BBolt | Redis | MongoDB |
-|------|-------|-------|---------|
-| **Namespace** | 文件系統目錄中的 `.db` 文件 | Key 前綴 (1st segment) | Database |
-| **Collection** | BBolt Bucket | Key 前綴 (2nd segment) | Collection |
-| **Key** | Bucket 內的鍵 | Redis Key (3rd segment) | Document `key` field |
-| **Value** | 二進制字節 | Redis String (字節) | Document `value` field (字符串) |
-| **存儲位置** | `{BBoltPath}/{namespace}.db` | 單一 Redis 服務器 | MongoDB 服務器 |
-| **並發控制** | `sync.RWMutex` (per adapter) | Redis 原子操作 | MongoDB 事務 |
-| **索引** | 無索引 (O(1) 查找) | Key 唯一 | 自動建立 unique index |
-| **分佈式** | 否（本地文件） | 是（可集群） | 是（可副本集） |
-| **適用場景** | 邊界設備、開發環境 | 高性能緩存、實時應用 | 生產環境、雲部署 |
+| Concept | BBolt | Redis | MongoDB |
+|---------|-------|-------|---------|
+| **Namespace** | `.db` file in filesystem | Key prefix (1st segment) | Database |
+| **Collection** | BBolt Bucket | Key prefix (2nd segment) | Collection |
+| **Key** | Key within bucket | Redis Key (3rd segment) | Document `key` field |
+| **Value** | Binary bytes | Redis String (bytes) | Document `value` field (string) |
+| **Storage Location** | `{BBoltPath}/{namespace}.db` | Single Redis server | MongoDB server |
+| **Concurrency Control** | `sync.RWMutex` (per adapter) | Redis atomic ops | MongoDB transactions |
+| **Indexing** | No index (O(1) lookup) | Key unique | Auto unique index on `key` |
+| **Distributed** | No (local files) | Yes (clustering) | Yes (replica sets) |
+| **Use Cases** | Edge devices, development | High-performance cache, real-time | Production, cloud, distributed |
 
 ---
 
-## 5. 數據流圖 - 完整的 GET 請求
+## 5. Complete Data Flow - GET Request Example
 
-### 示例：GET /api/v1/kv/default/users/user1
+### Example: GET /api/v1/kv/default/users/user1
 
 ```mermaid
 sequenceDiagram
@@ -239,9 +239,9 @@ sequenceDiagram
 
 ---
 
-## 6. BBolt 適配器實現細節
+## 6. BBolt Adapter Implementation Details
 
-### 架構特點
+### Architecture Characteristics
 
 ```mermaid
 graph TB
@@ -272,7 +272,7 @@ graph TB
     style Buckets1 fill:#F3E5F5,stroke:#9C27B0
 ```
 
-### 數據組織
+### Data Organization
 
 ```
 {BBoltPath}/
@@ -290,24 +290,24 @@ graph TB
     └── ...
 ```
 
-### 關鍵實現
+### Key Implementation Details
 
-位置：`internal/database/bbolt/bbolt.go`
+Location: `internal/database/bbolt/bbolt.go`
 
-**並發控制**：
+**Concurrency Control**:
 ```go
 type BBoltKV struct {
     baseDir string
-    dbs map[string]*bbolt.DB  // 每個 namespace 一個連接
-    mu sync.RWMutex           // 保護 dbs map
+    dbs map[string]*bbolt.DB  // One connection per namespace
+    mu sync.RWMutex           // Protects dbs map
 }
 ```
 
-**Lazy Loading**：
+**Lazy Loading**:
 ```go
-// 首次訪問 namespace 時才打開文件
+// Opens file only on first namespace access
 func (b *BBoltKV) getDB(namespace string) (*bbolt.DB, error) {
-    // 讀鎖查詢
+    // Read lock for fast path
     b.mu.RLock()
     if db, exists := b.dbs[namespace]; exists {
         b.mu.RUnlock()
@@ -315,7 +315,7 @@ func (b *BBoltKV) getDB(namespace string) (*bbolt.DB, error) {
     }
     b.mu.RUnlock()
     
-    // 寫鎖打開
+    // Write lock for opening new db
     b.mu.Lock()
     defer b.mu.Unlock()
     
@@ -326,22 +326,22 @@ func (b *BBoltKV) getDB(namespace string) (*bbolt.DB, error) {
 }
 ```
 
-**優勢**：
-- ✅ 無外部依賴（無需服務器）
-- ✅ 適合邊界設備和開發環境
-- ✅ 文件系統原生支持，數據持久化
-- ✅ 低延遲（本地磁盤訪問）
+**Advantages**:
+- ✅ No external dependencies (no server required)
+- ✅ Ideal for edge devices and development environments
+- ✅ Native filesystem support with data persistence
+- ✅ Low latency (local disk access)
 
-**限制**：
-- ❌ 不支持分佈式
-- ❌ 單進程鎖定（多進程會衝突）
-- ❌ 性能受限於本地磁盤
+**Limitations**:
+- ❌ No distributed support
+- ❌ Single-process locking (conflicts with multi-process access)
+- ❌ Performance limited by local disk speed
 
 ---
 
-## 7. Redis 適配器實現細節
+## 7. Redis Adapter Implementation Details
 
-### 架構特點
+### Architecture Characteristics
 
 ```mermaid
 graph TB
@@ -365,12 +365,12 @@ graph TB
     style Keys fill:#FFF3E0,stroke:#FF6E40
 ```
 
-### Key 命名規則
+### Key Naming Convention
 
 ```
 Namespace:Collection:Key
 
-示例：
+Examples:
 ├── default:users:user1
 ├── default:users:user2
 ├── default:cards:card001
@@ -380,25 +380,25 @@ Namespace:Collection:Key
 └── admin:logs:2024-02-01
 ```
 
-### 關鍵實現
+### Key Implementation Details
 
-位置：`internal/database/redis/redis.go`
+Location: `internal/database/redis/redis.go`
 
-**連接池**：
+**Connection Pool**:
 ```go
 type RedisKV struct {
-    client *redis.Client  // 管理連接池
+    client *redis.Client  // Manages connection pool
 }
 ```
 
-**Key 格式化**：
+**Key Formatting**:
 ```go
 func makeKey(namespace, collection, key string) string {
     return fmt.Sprintf("%s:%s:%s", namespace, collection, key)
 }
 ```
 
-**操作示例**：
+**Operation Examples**:
 ```go
 // Set: Redis SET namespace:collection:key value
 func (r *RedisKV) Set(ctx context.Context, ns, coll, key string, value []byte) error {
@@ -417,28 +417,28 @@ func (r *RedisKV) Get(ctx context.Context, ns, coll, key string) ([]byte, error)
 }
 ```
 
-**優勢**：
-- ✅ 超高性能（內存訪問，<1ms）
-- ✅ 支持集群（分佈式緩存）
-- ✅ 豐富的數據結構（List, Set, Hash 等）
-- ✅ 原生事務支持
+**Advantages**:
+- ✅ Ultra-high performance (<1ms latency)
+- ✅ Cluster support (distributed caching)
+- ✅ Rich data structures (List, Set, Hash, etc.)
+- ✅ Native transaction support
 
-**限制**：
-- ❌ 內存容量有限
-- ❌ 數據易丟失（需要配置持久化）
-- ❌ 需要獨立的 Redis 服務器
+**Limitations**:
+- ❌ Memory capacity constraints
+- ❌ Data loss risk (requires persistence configuration)
+- ❌ Requires external Redis server
 
-**適用場景**：
-- 實時應用、高並發讀寫
-- 緩存層
-- 會話存儲
-- 排隊系統
+**Use Cases**:
+- Real-time applications, high-concurrency read/write
+- Cache layer
+- Session storage
+- Queue systems
 
 ---
 
-## 8. MongoDB 適配器實現細節
+## 8. MongoDB Adapter Implementation Details
 
-### 架構特點
+### Architecture Characteristics
 
 ```mermaid
 graph TB
@@ -470,43 +470,43 @@ graph TB
     style Coll fill:#E0F2F1,stroke:#00ACC1
 ```
 
-### 數據結構
+### Document Structure
 
-**MongoDB 文檔結構**：
+**MongoDB Document Structure**:
 ```json
 {
-    "_id": ObjectId("..."),        // MongoDB 自動生成
-    "key": "user1",                // 我們的 key 字段
-    "value": "{\"name\":\"Alice\"}", // JSON 字符串
-    "created_at": ISODate("..."),  // 創建時間
-    "updated_at": ISODate("...")   // 更新時間
+    "_id": ObjectId("..."),        // Auto-generated by MongoDB
+    "key": "user1",                // Our key field
+    "value": "{\"name\":\"Alice\"}", // JSON string
+    "created_at": ISODate("..."),  // Creation timestamp
+    "updated_at": ISODate("...")   // Update timestamp
 }
 ```
 
-**多層次映射**：
+**Multi-level Mapping**:
 ```
-MongoDB 層次        | KV 層次
+MongoDB Layer          | KV Layer
 namespace → Database
 collection → Collection
 key → Document.key field
 value → Document.value field
 ```
 
-### 關鍵實現
+### Key Implementation Details
 
-位置：`internal/database/mongodb/mongodb.go`
+Location: `internal/database/mongodb/mongodb.go`
 
-**連接管理**：
+**Connection Management**:
 ```go
 type MongoDBKV struct {
-    client *mongo.Client  // 單一連接管理所有操作
+    client *mongo.Client  // Single connection managing all operations
     uri    string
 }
 ```
 
-**索引創建**：
+**Index Creation**:
 ```go
-// 為每個 collection 建立唯一索引，確保 key 唯一
+// Create unique index on key for each collection
 func (m *MongoDBKV) ensureIndex(ctx context.Context, coll *mongo.Collection) error {
     indexModel := mongo.IndexModel{
         Keys: bson.D{{Key: "key", Value: 1}},
@@ -517,7 +517,7 @@ func (m *MongoDBKV) ensureIndex(ctx context.Context, coll *mongo.Collection) err
 }
 ```
 
-**Get 操作**：
+**Get Operation**:
 ```go
 func (m *MongoDBKV) Get(ctx context.Context, namespace, collection, key string) ([]byte, error) {
     coll := m.getCollection(namespace, collection)
@@ -537,40 +537,40 @@ func (m *MongoDBKV) Get(ctx context.Context, namespace, collection, key string) 
 }
 ```
 
-**優勢**：
-- ✅ 完全托管（云服務如 Atlas）
-- ✅ 自動副本集、故障轉移
-- ✅ 支持複雜查詢（可擴展功能）
-- ✅ 高可用性、安全性
-- ✅ 無容量限制
+**Advantages**:
+- ✅ Fully managed (cloud services like Atlas)
+- ✅ Auto replica sets and failover
+- ✅ Support for complex queries (extensible features)
+- ✅ High availability and security
+- ✅ Unlimited capacity
 
-**限制**：
-- ❌ 網絡延遲（相比本地存儲）
-- ❌ 需要外部服務
-- ❌ 成本可能更高
+**Limitations**:
+- ❌ Network latency (compared to local storage)
+- ❌ Requires external service
+- ❌ Potentially higher costs
 
-**適用場景**：
-- 生產環境
-- 雲部署
-- 分佈式系統
-- 需要高可用性的應用
+**Use Cases**:
+- Production environments
+- Cloud deployment
+- Distributed systems
+- Applications requiring high availability
 
 ---
 
-## 9. 完整的數據流示例
+## 9. Complete Data Flow Example
 
-### 場景：存儲房卡數據
+### Scenario: Storing Card Data
 
-#### Step 1: 配置選擇 (main.go)
+#### Step 1: Configuration Selection (main.go)
 
 ```go
 cfg := config.LoadConfig()
-// KV_BACKEND_TYPE=mongodb 從 .env 讀取
+// KV_BACKEND_TYPE=mongodb read from .env
 kvStore, _ := database.NewKV(cfg)
-// 返回 MongoDBKV instance
+// Returns MongoDBKV instance
 ```
 
-#### Step 2: HTTP 請求
+#### Step 2: HTTP Request
 
 ```bash
 POST /api/v1/kv/default/cards/card001
@@ -586,49 +586,49 @@ Content-Type: application/json
 }
 ```
 
-#### Step 3: Handler 處理
+#### Step 3: Handler Processing
 
 ```go
 // handlers/kv.go
 func SetKVHandler(kvStore kv.KV) gin.HandlerFunc {
     return func(c *gin.Context) {
-        // 解析參數
+        // Parse parameters
         ns := c.Param("namespace")        // "default"
         coll := c.Param("collection")     // "cards"
         key := c.Param("key")             // "card001"
         
-        // 解析 JSON body
+        // Parse JSON body
         var req KVRequestBody
         c.BindJSON(&req)
         
-        // 編碼為 JSON bytes
+        // Encode to JSON bytes
         valueBytes, _ := json.Marshal(req.Value)
         
-        // 調用 KV 接口（不知道具體實現）
+        // Call KV interface (agnostic to implementation)
         err := kvStore.Set(c.Request.Context(), ns, coll, key, valueBytes)
         
-        // 返回結果
+        // Return result
         c.JSON(200, KVResponse{...})
     }
 }
 ```
 
-#### Step 4: MongoDB 適配器執行
+#### Step 4: MongoDB Adapter Execution
 
 ```go
 // internal/database/mongodb/mongodb.go
 func (m *MongoDBKV) Set(ctx context.Context, ns, coll, key string, value []byte) error {
     collection := m.getCollection(ns, coll)     // db: default, collection: cards
-    m.ensureIndex(ctx, collection)              // 確保 key 唯一
+    m.ensureIndex(ctx, collection)              // Ensure key uniqueness
     
     doc := bson.M{
         "key": key,                             // "card001"
-        "value": string(value),                 // JSON 字符串
+        "value": string(value),                 // JSON string
         "created_at": time.Now(),
         "updated_at": time.Now(),
     }
     
-    // MongoDB 操作：upsert
+    // MongoDB operation: upsert
     opts := options.Update().SetUpsert(true)
     _, err := collection.UpdateOne(
         ctx,
@@ -640,13 +640,13 @@ func (m *MongoDBKV) Set(ctx context.Context, ns, coll, key string, value []byte)
 }
 ```
 
-#### Step 5: MongoDB 存儲結果
+#### Step 5: MongoDB Storage Result
 
 ```javascript
-// MongoDB 數據庫視圖
+// MongoDB database view
 use default
 db.cards.find()
-// 結果：
+// Result:
 {
   "_id": ObjectId("67b12345..."),
   "key": "card001",
@@ -658,19 +658,19 @@ db.cards.find()
 
 ---
 
-## 10. 擴展新的後端
+## 10. Extending with New Backends
 
-### 如何添加 PostgreSQL 適配器
+### How to Add a PostgreSQL Adapter
 
-#### Step 1: 創建適配器文件
+#### Step 1: Create Adapter Files
 
 ```
 internal/database/postgres/
-├── postgres.go          # 實現 KV 接口
-└── postgres_test.go     # 單元測試
+├── postgres.go          # Implement KV interface
+└── postgres_test.go     # Unit tests
 ```
 
-#### Step 2: 實現 KV 接口
+#### Step 2: Implement KV Interface
 
 ```go
 package postgres
@@ -681,7 +681,7 @@ type PostgresKV struct {
     db *sql.DB
 }
 
-// 實現所有 6 個方法
+// Implement all 6 methods
 func (p *PostgresKV) Get(ctx context.Context, ns, coll, key string) ([]byte, error) {
     query := `SELECT value FROM kv_store WHERE namespace=$1 AND collection=$2 AND key=$3`
     var value []byte
@@ -693,14 +693,14 @@ func (p *PostgresKV) Get(ctx context.Context, ns, coll, key string) ([]byte, err
 }
 
 func (p *PostgresKV) Set(ctx context.Context, ns, coll, key string, value []byte) error {
-    // INSERT OR UPDATE 邏輯
+    // INSERT OR UPDATE logic
     ...
 }
 
-// 其他 4 個方法...
+// Implement remaining 4 methods...
 ```
 
-#### Step 3: 更新 Config
+#### Step 3: Update Config
 
 ```go
 // internal/config/config.go
@@ -713,7 +713,7 @@ type KVConfig struct {
 }
 ```
 
-#### Step 4: 更新 Factory
+#### Step 4: Update Factory
 
 ```go
 // internal/database/factory.go
@@ -721,79 +721,79 @@ func NewKV(cfg *config.Config) (kv.KV, error) {
     switch cfg.KV.BackendType {
     case config.BackendPostgres:
         return postgres.NewPostgresKV(cfg.KV.PostgresURI)
-    // ... 其他 cases
+    // ... other cases
     }
 }
 ```
 
-#### Step 5: 更新 .env.example
+#### Step 5: Update .env.example
 
 ```bash
-# 新增 PostgreSQL 配置
+# Add PostgreSQL configuration
 KV_BACKEND_TYPE=postgres
 POSTGRES_URI=postgresql://user:pass@localhost:5432/kv_store
 ```
 
-完成！無需修改任何業務邏輯代碼。
+Done! No business logic code changes required.
 
 ---
 
-## 11. 設計原則詳解
+## 11. Design Principles Explained
 
-### 依賴倒置原則 (DIP - Dependency Inversion Principle)
+### Dependency Inversion Principle (DIP)
 
 ```
-❌ 錯誤做法 (強耦合)：
+❌ Wrong approach (tight coupling):
 Handler → MongoDBKV → mongo-driver
 
-✅ 正確做法 (弱耦合)：
+✅ Correct approach (loose coupling):
 Handler → KV Interface ← MongoDBKV
                       ← RedisKV
                       ← BBoltKV
 ```
 
-**優勢**：
-- 上層模塊不依賴下層模塊，都依賴抽象
-- 切換實現無需修改上層代碼
+**Benefits**:
+- Upper layers don't depend on lower layers; both depend on abstraction
+- Switching implementations requires no upper-layer code changes
 
-### 開閉原則 (OCP - Open/Closed Principle)
-
-```
-開放於擴展：可以添加新的適配器（如 PostgreSQL）
-對修改封閉：不需要修改已有代碼
-```
-
-### 單一職責原則 (SRP - Single Responsibility Principle)
+### Open/Closed Principle (OCP)
 
 ```
-每個適配器只負責一種數據庫的實現
-- BBoltKV: 僅處理文件系統操作
-- RedisKV: 僅處理 Redis 協議
-- MongoDBKV: 僅處理 MongoDB 協議
+Open for extension: Can add new adapters (e.g., PostgreSQL)
+Closed for modification: No need to modify existing code
 ```
 
-### 接口隔離原則 (ISP - Interface Segregation Principle)
+### Single Responsibility Principle (SRP)
 
 ```
-KV 接口只包含必要的 6 個方法
-- 不強制實現不需要的方法
-- 保持接口最小化
+Each adapter is responsible for one database implementation only:
+- BBoltKV: Only handles filesystem operations
+- RedisKV: Only handles Redis protocol
+- MongoDBKV: Only handles MongoDB protocol
+```
+
+### Interface Segregation Principle (ISP)
+
+```
+KV interface contains only 6 necessary methods:
+- Doesn't force implementation of unnecessary methods
+- Keeps interface minimal and focused
 ```
 
 ---
 
-## 12. 與 MVP 房卡驗證系統的結合
+## 12. Integration with MVP Card Verification System
 
-### 場景：房卡有效性驗證
+### Scenario: Card Validity Verification
 
-#### 方案 A：直接使用 MongoDB Adapter（快速 MVP）
+#### Option A: Direct MongoDB Adapter Usage (Quick MVP)
 
 ```go
-// 優勢：快速、靈活
-// 劣勢：與 KV 抽象分離
+// Advantages: Fast, flexible
+// Disadvantages: Separated from KV abstraction
 
 func VerifyCard(ctx context.Context, cardID string) (bool, error) {
-    // 直接訪問 MongoDB
+    // Direct MongoDB access
     collection := mongoClient.Database("default").Collection("cards")
     
     var card struct {
@@ -807,127 +807,127 @@ func VerifyCard(ctx context.Context, cardID string) (bool, error) {
         return false, err
     }
     
-    // 驗證邏輯
+    // Verification logic
     return card.Status == "active" && time.Now().Before(card.ExpireAt), nil
 }
 ```
 
-#### 方案 B：擴展 KV 接口（長期解決方案）
+#### Option B: Extend KV Interface (Long-term Solution)
 
 ```go
-// 在 kv.KV 接口中添加查詢方法
+// Add query method to kv.KV interface
 type KV interface {
-    // ... 原有 6 個方法
+    // ... original 6 methods
     
-    // 新增查詢方法
+    // New query method
     Query(ctx context.Context, ns, coll string, filter map[string]interface{}) ([]map[string]interface{}, error)
 }
 ```
 
-#### 方案 C：並行架構（推薦用於生產）
+#### Option C: Parallel Architecture (Production Recommended)
 
 ```
-KV 層（通用數據存儲）
-  ├─ 存儲通用配置、設置、日誌
+KV Layer (general-purpose storage)
+  ├─ Store general config, settings, logs
 
-Card Service 層（業務邏輯）
-  ├─ 讀取 MongoDB（直接查詢）
-  ├─ 驗證房卡邏輯
-  └─ 寫入 Redis 緩存（熱數據）
+Card Service Layer (business logic)
+  ├─ Read MongoDB (direct queries)
+  ├─ Verify card logic
+  └─ Write Redis cache (hot data)
 
 HTTP API
-  └─ /api/v1/cards/verify (房卡驗證)
+  └─ /api/v1/cards/verify (card verification)
 ```
 
 ---
 
-## 13. 性能特性對比
+## 13. Performance Characteristics Comparison
 
-### 延遲對比 (Latency)
-
-```
-操作：Get 單個鍵值
-
-BBolt:   1-5ms      (本地磁盤)
-Redis:   <1ms       (內存，網絡延遲)
-MongoDB: 5-50ms     (網絡延遲 + 查詢)
-```
-
-### 吞吐量對比 (Throughput)
+### Latency Comparison (Latency)
 
 ```
-假設：64 核 CPU，網絡帶寬充足
+Operation: Get single key-value
 
-BBolt:   ~10K ops/sec    (磁盤 I/O 限制)
-Redis:   ~100K ops/sec   (內存操作)
-MongoDB: ~50K ops/sec    (網絡限制)
+BBolt:   1-5ms      (local disk)
+Redis:   <1ms       (memory, network latency)
+MongoDB: 5-50ms     (network latency + query)
 ```
 
-### 存儲容量對比
+### Throughput Comparison (Throughput)
 
 ```
-BBolt:   取決於磁盤空間 (可達 TB 級)
-Redis:   取決於內存大小 (通常 GB 級)
-MongoDB: 可達 PB 級 (分佈式存儲)
+Assumption: 64-core CPU, sufficient network bandwidth
+
+BBolt:   ~10K ops/sec    (disk I/O limited)
+Redis:   ~100K ops/sec   (memory operations)
+MongoDB: ~50K ops/sec    (network limited)
 ```
 
-### 成本對比
+### Storage Capacity Comparison
 
 ```
-BBolt:   $0          (開源，無服務器成本)
-Redis:   低-中       (需要服務器)
-MongoDB: 低-高       (Atlas 按使用量計費)
+BBolt:   Disk space dependent (up to TB scale)
+Redis:   Memory size dependent (typically GB scale)
+MongoDB: Up to PB scale (distributed storage)
 ```
 
----
-
-## 14. 選擇指南
-
-### 何時使用 BBolt？
+### Cost Comparison
 
 ```
-✅ 邊界設備 (Raspberry Pi, IoT)
-✅ 開發環境
-✅ 簡單的單機應用
-✅ 對成本敏感
-❌ 高並發應用
-❌ 分佈式系統
-```
-
-### 何時使用 Redis？
-
-```
-✅ 高性能實時應用
-✅ 緩存層
-✅ 會話存儲
-✅ 排隊系統
-❌ 長期數據存儲 (需要持久化)
-❌ 複雜查詢
-```
-
-### 何時使用 MongoDB？
-
-```
-✅ 生產環境
-✅ 云部署 (Atlas)
-✅ 分佈式系統
-✅ 複雜數據結構
-✅ 高可用性要求
-❌ 超低延遲要求 (<1ms)
-❌ 內存有限的環境
+BBolt:   $0          (open source, no server costs)
+Redis:   Low-Medium  (requires server)
+MongoDB: Low-High    (Atlas pay-per-use model)
 ```
 
 ---
 
-## 15. 監控和調試
+## 14. Selection Guide
 
-### 健康檢查
+### When to Use BBolt?
+
+```
+✅ Edge devices (Raspberry Pi, IoT)
+✅ Development environments
+✅ Simple single-machine applications
+✅ Cost-sensitive projects
+❌ High-concurrency applications
+❌ Distributed systems
+```
+
+### When to Use Redis?
+
+```
+✅ High-performance real-time applications
+✅ Cache layer
+✅ Session storage
+✅ Queue systems
+❌ Long-term data storage (requires persistence)
+❌ Complex queries
+```
+
+### When to Use MongoDB?
+
+```
+✅ Production environments
+✅ Cloud deployment (Atlas)
+✅ Distributed systems
+✅ Complex data structures
+✅ High availability requirements
+❌ Sub-millisecond latency requirements (<1ms)
+❌ Memory-constrained environments
+```
+
+---
+
+## 15. Monitoring and Debugging
+
+### Health Checks
 
 ```bash
-# 所有後端都支持 Ping 方法
+# All backends support Ping method
 curl http://localhost:8080/health
 
-# 響應示例
+# Example response
 {
   "status": "ok",
   "database": "connected",
@@ -935,34 +935,33 @@ curl http://localhost:8080/health
 }
 ```
 
-### 日誌記錄
+### Logging
 
 ```go
-// 所有操作都記錄日誌
+// All operations are logged
 log.Printf("KV Get: namespace=%s, collection=%s, key=%s", ns, coll, key)
 log.Printf("KV Set: namespace=%s, collection=%s, key=%s, size=%d bytes", ns, coll, key, len(value))
 ```
 
-### 性能監控
+### Performance Monitoring
 
-建議添加指標：
-- 請求延遲 (p50, p95, p99)
-- 每秒操作數 (OPS)
-- 错誤率
-- 連接池使用率
+Recommended metrics:
+- Request latency (p50, p95, p99)
+- Operations per second (OPS)
+- Error rate
+- Connection pool utilization
 
 ---
 
-## 總結
+## Summary
 
-Commander 的數據庫抽象層提供：
+Commander's database abstraction layer provides:
 
-1. **統一接口**：通過 `kv.KV` 接口隱藏實現細節
-2. **多後端支持**：支持 BBolt、Redis、MongoDB 三種主流方案
-3. **運行時切換**：通過環境變量動態選擇後端
-4. **易於擴展**：添加新後端只需實現接口
-5. **設計模式**：遵循 SOLID 原則，代碼高內聚、低耦合
-6. **性能優化**：針對不同場景選擇最優方案
+1. **Unified Interface**: The `kv.KV` interface hides implementation details
+2. **Multi-Backend Support**: Supports BBolt, Redis, MongoDB—three mainstream solutions
+3. **Runtime Switching**: Dynamically select backend via environment variables
+4. **Extensibility**: Adding new backends requires only interface implementation
+5. **Design Patterns**: Follows SOLID principles with high cohesion and low coupling
+6. **Performance Optimization**: Choose optimal solution for each specific scenario
 
-這個設計為 MVP 房卡驗證系統、生產環境部署、邊界設備支持提供了堅實的基礎。
-
+This design provides a solid foundation for MVP card verification systems, production deployments, and edge device support.
