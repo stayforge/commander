@@ -129,5 +129,21 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV) {
 
 		// GET /api/v1/kv/{namespace}/{collection} (list keys)
 		v1.GET("/kv/:namespace/:collection", handlers.ListKeysHandler(kvStore))
+
+		// Namespace and Collection management
+		// GET /api/v1/namespaces (list namespaces)
+		v1.GET("/namespaces", handlers.ListNamespacesHandler(kvStore))
+
+		// GET /api/v1/namespaces/{namespace}/collections (list collections)
+		v1.GET("/namespaces/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
+
+		// GET /api/v1/namespaces/{namespace}/info (get namespace info)
+		v1.GET("/namespaces/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
+
+		// DELETE /api/v1/namespaces/{namespace} (delete namespace)
+		v1.DELETE("/namespaces/:namespace", handlers.DeleteNamespaceHandler(kvStore))
+
+		// DELETE /api/v1/namespaces/{namespace}/collections/{collection} (delete collection)
+		v1.DELETE("/namespaces/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
 	}
 }
