@@ -97,7 +97,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRoutes(router *gin.Engine, _ kv.KV) {
+func setupRoutes(router *gin.Engine, kvStore kv.KV) {
 	// Health check
 	router.GET("/health", handlers.HealthHandler)
 
@@ -105,9 +105,19 @@ func setupRoutes(router *gin.Engine, _ kv.KV) {
 	router.GET("/", handlers.RootHandler)
 
 	// API v1 routes
-	// v1 := router.Group("/api/v1")
-	// {
-	// 	// Add your API routes here
-	// 	// Example: v1.GET("/items", handlers.GetItems(kvStore))
-	// }
+	v1 := router.Group("/api/v1")
+	{
+		// KV CRUD operations
+		// GET /api/v1/kv/{namespace}/{collection}/{key}
+		v1.GET("/kv/:namespace/:collection/:key", handlers.GetKVHandler(kvStore))
+
+		// POST /api/v1/kv/{namespace}/{collection}/{key}
+		v1.POST("/kv/:namespace/:collection/:key", handlers.SetKVHandler(kvStore))
+
+		// DELETE /api/v1/kv/{namespace}/{collection}/{key}
+		v1.DELETE("/kv/:namespace/:collection/:key", handlers.DeleteKVHandler(kvStore))
+
+		// HEAD /api/v1/kv/{namespace}/{collection}/{key}
+		v1.HEAD("/kv/:namespace/:collection/:key", handlers.HeadKVHandler(kvStore))
+	}
 }
