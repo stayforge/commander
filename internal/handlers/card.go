@@ -62,7 +62,7 @@ func CardVerificationHandler(cardService *services.CardService) gin.HandlerFunc 
 }
 
 // CardVerificationVguangHandler handles vguang-m350 device compatibility
-// POST /api/v1/namespaces/:namespace/device/:device_name
+// POST /api/v1/namespaces/:namespace/device/:device_name/vguang
 // Body: plain text or binary card number
 // Success: 200 "code=0000"
 // Error: 404 (no body, logged to console)
@@ -113,8 +113,9 @@ func parseVguangCardNumber(rawBody []byte) string {
 	// Try to decode as UTF-8 text
 	text := strings.TrimSpace(string(rawBody))
 
-	// Check if alphanumeric
+	// Check if alphanumeric (with hyphens)
 	if len(text) > 0 && isAlphanumeric(text) {
+		// Convert to uppercase for consistency
 		return strings.ToUpper(text)
 	}
 
@@ -126,10 +127,10 @@ func parseVguangCardNumber(rawBody []byte) string {
 	return strings.ToUpper(hex.EncodeToString(reversed))
 }
 
-// isAlphanumeric checks if string contains only letters and digits
+// isAlphanumeric checks if string contains only letters, digits, and hyphens
 func isAlphanumeric(s string) bool {
 	for _, c := range s {
-		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-') {
 			return false
 		}
 	}

@@ -45,14 +45,15 @@ func (s *CardService) VerifyCard(ctx context.Context, namespace, deviceSN, cardN
 		return err
 	}
 
-	if device.Status != "active" {
-		log.Printf("[CardVerification] Device not active: namespace=%s, device_sn=%s, status=%s",
-			namespace, deviceSN, device.Status)
-		return ErrDeviceNotActive
-	}
+	// Status check disabled - accept devices regardless of status
+	// if device.Status != "active" {
+	// 	log.Printf("[CardVerification] Device not active: namespace=%s, device_sn=%s, status=%s",
+	// 		namespace, deviceSN, device.Status)
+	// 	return ErrDeviceNotActive
+	// }
 
-	log.Printf("[CardVerification] Device verified: namespace=%s, device_sn=%s, device_id=%s, status=%s",
-		namespace, deviceSN, device.DeviceID, device.Status)
+	log.Printf("[CardVerification] Device verified: namespace=%s, device_sn=%s, device_id=%s",
+		namespace, deviceSN, device.DeviceID)
 
 	// Step 2: Find card by number
 	card, err := s.getCard(ctx, namespace, cardNumber)
@@ -62,10 +63,10 @@ func (s *CardService) VerifyCard(ctx context.Context, namespace, deviceSN, cardN
 		return err
 	}
 
-	// Step 3: Verify card is authorized for this device
-	if !card.HasDevice(deviceSN) {
-		log.Printf("[CardVerification] Card not authorized: namespace=%s, card_number=%s, device_sn=%s, authorized_devices=%v",
-			namespace, cardNumber, deviceSN, card.Devices)
+	// Step 3: Verify card is authorized for this device (check both SN and device_id)
+	if !card.HasDevice(deviceSN) && !card.HasDevice(device.DeviceID) {
+		log.Printf("[CardVerification] Card not authorized: namespace=%s, card_number=%s, device_sn=%s, device_id=%s, authorized_devices=%v",
+			namespace, cardNumber, deviceSN, device.DeviceID, card.Devices)
 		return ErrCardNotAuthorized
 	}
 
