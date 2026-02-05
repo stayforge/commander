@@ -172,10 +172,10 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV, cardService *services.CardSe
 			v1.POST("/namespaces/:namespace",
 				handlers.CardVerificationHandler(cardService))
 
-			// Legacy vguang-m350 compatibility: POST /api/v1/namespaces/:namespace/device/:device_name
+			// Legacy vguang-m350 compatibility: POST /api/v1/namespaces/:namespace/device/:device_name/vguang
 			// Body: plain text or binary card number
 			// Response: 200 "code=0000" (success) or 404 (error)
-			v1.POST("/namespaces/:namespace/device/:device_name",
+			v1.POST("/namespaces/:namespace/device/:device_name/vguang",
 				handlers.CardVerificationVguangHandler(cardService))
 		}
 	}

@@ -62,7 +62,7 @@ HTTP/1.1 404 Not Found
 
 ### vguang-m350 Compatibility (Legacy API)
 
-**Endpoint**: `POST /api/v1/namespaces/:namespace/device/:device_name`
+**Endpoint**: `POST /api/v1/namespaces/:namespace/device/:device_name/vguang`
 
 **Body**: Plain text or binary card number
 
@@ -358,7 +358,7 @@ echo -ne '\x01\x02\x03\x04' | curl -X POST -d @- \
 | Method | Endpoint | Purpose | Success | Error |
 |--------|----------|---------|---------|-------|
 | POST | `/api/v1/namespaces/:namespace` | Standard verification | 204 No Content | Status only |
-| POST | `/api/v1/namespaces/:namespace/device/:device_name` | vguang-m350 compatibility | 200 + "code=0000" | 404 |
+| POST | `/api/v1/namespaces/:namespace/device/:device_name/vguang` | vguang-m350 compatibility | 200 + "code=0000" | 404 |
 
 ---
 
