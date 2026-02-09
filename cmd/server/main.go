@@ -124,57 +124,57 @@ func setupRoutes(router *gin.Engine, _ kv.KV, cardService *services.CardService)
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	// ========== KV CRUD operations (Commented for MVP) ==========
-		// GET /api/v1/kv/{namespace}/{collection}/{key}
-		// v1.GET("/kv/:namespace/:collection/:key", handlers.GetKVHandler(kvStore))
+	// GET /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.GET("/kv/:namespace/:collection/:key", handlers.GetKVHandler(kvStore))
 
-		// POST /api/v1/kv/{namespace}/{collection}/{key}
-		// v1.POST("/kv/:namespace/:collection/:key", handlers.SetKVHandler(kvStore))
+	// POST /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.POST("/kv/:namespace/:collection/:key", handlers.SetKVHandler(kvStore))
 
-		// DELETE /api/v1/kv/{namespace}/{collection}/{key}
-		// v1.DELETE("/kv/:namespace/:collection/:key", handlers.DeleteKVHandler(kvStore))
+	// DELETE /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.DELETE("/kv/:namespace/:collection/:key", handlers.DeleteKVHandler(kvStore))
 
-		// HEAD /api/v1/kv/{namespace}/{collection}/{key}
-		// v1.HEAD("/kv/:namespace/:collection/:key", handlers.HeadKVHandler(kvStore))
+	// HEAD /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.HEAD("/kv/:namespace/:collection/:key", handlers.HeadKVHandler(kvStore))
 
-		// ========== Batch operations (Commented for MVP) ==========
-		// POST /api/v1/kv/batch (batch set)
-		// v1.POST("/kv/batch", handlers.BatchSetHandler(kvStore))
+	// ========== Batch operations (Commented for MVP) ==========
+	// POST /api/v1/kv/batch (batch set)
+	// v1.POST("/kv/batch", handlers.BatchSetHandler(kvStore))
 
-		// DELETE /api/v1/kv/batch (batch delete)
-		// v1.DELETE("/kv/batch", handlers.BatchDeleteHandler(kvStore))
+	// DELETE /api/v1/kv/batch (batch delete)
+	// v1.DELETE("/kv/batch", handlers.BatchDeleteHandler(kvStore))
 
-		// ========== List and Management (Commented for MVP) ==========
-		// GET /api/v1/kv/{namespace}/{collection} (list keys)
-		// v1.GET("/kv/:namespace/:collection", handlers.ListKeysHandler(kvStore))
+	// ========== List and Management (Commented for MVP) ==========
+	// GET /api/v1/kv/{namespace}/{collection} (list keys)
+	// v1.GET("/kv/:namespace/:collection", handlers.ListKeysHandler(kvStore))
 
-		// GET /api/v1/namespaces (list namespaces)
-		// v1.GET("/namespaces", handlers.ListNamespacesHandler(kvStore))
+	// GET /api/v1/namespaces (list namespaces)
+	// v1.GET("/namespaces", handlers.ListNamespacesHandler(kvStore))
 
-		// GET /api/v1/namespaces/{namespace}/collections (list collections)
-		// v1.GET("/namespaces/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
+	// GET /api/v1/namespaces/{namespace}/collections (list collections)
+	// v1.GET("/namespaces/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
 
-		// GET /api/v1/namespaces/{namespace}/info (get namespace info)
-		// v1.GET("/namespaces/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
+	// GET /api/v1/namespaces/{namespace}/info (get namespace info)
+	// v1.GET("/namespaces/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
 
-		// DELETE /api/v1/namespaces/{namespace} (delete namespace)
-		// v1.DELETE("/namespaces/:namespace", handlers.DeleteNamespaceHandler(kvStore))
+	// DELETE /api/v1/namespaces/{namespace} (delete namespace)
+	// v1.DELETE("/namespaces/:namespace", handlers.DeleteNamespaceHandler(kvStore))
 
-		// DELETE /api/v1/namespaces/{namespace}/collections/{collection} (delete collection)
-		// v1.DELETE("/namespaces/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
+	// DELETE /api/v1/namespaces/{namespace}/collections/{collection} (delete collection)
+	// v1.DELETE("/namespaces/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
 
-		// ========== Card Verification (MVP) ==========
-		if cardService != nil {
-			// New standard API: POST /api/v1/namespaces/:namespace
-			// Header: X-Device-SN
-			// Body: plain text card number
-			// Response: 204 No Content (success) or status code only (error)
-			v1.POST("/namespaces/:namespace",
-				handlers.CardVerificationHandler(cardService))
+	// ========== Card Verification (MVP) ==========
+	if cardService != nil {
+		// New standard API: POST /api/v1/namespaces/:namespace
+		// Header: X-Device-SN
+		// Body: plain text card number
+		// Response: 204 No Content (success) or status code only (error)
+		v1.POST("/namespaces/:namespace",
+			handlers.CardVerificationHandler(cardService))
 
-			// Legacy vguang-m350 compatibility: POST /api/v1/namespaces/:namespace/device/:device_name/vguang
-			// Body: plain text or binary card number
-			// Response: 200 "code=0000" (success) or 404 (error)
-			v1.POST("/namespaces/:namespace/device/:device_name/vguang",
-				handlers.CardVerificationVguangHandler(cardService))
-		}
+		// Legacy vguang-m350 compatibility: POST /api/v1/namespaces/:namespace/device/:device_name/vguang
+		// Body: plain text or binary card number
+		// Response: 200 "code=0000" (success) or 404 (error)
+		v1.POST("/namespaces/:namespace/device/:device_name/vguang",
+			handlers.CardVerificationVguangHandler(cardService))
+	}
 }
