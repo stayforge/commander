@@ -138,7 +138,7 @@ jobs:
   #
   #     - name: Tag and push to Docker Hub
   #       run: |
-  #         docker tag ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}
-  #         docker tag ${{ env.IMAGE_NAME }}:latest ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-  #         docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}
-  #         docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+  #         docker tag ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ needs.build.outputs.version }}
+  #         docker tag ${{ env.IMAGE_NAME }}:latest ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
+  #         docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ needs.build.outputs.version }}
+  #         docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
