@@ -4,17 +4,34 @@
 *.dll
 *.so
 *.dylib
-bin/
+
+# Test binary, built with `go test -c`
 *.test
+
+# Output of the go coverage tool
 *.out
+
+# Dependency directories
+vendor/
 
 # Go workspace file
 go.work
 
-# Environment files
+# BBolt database files
+*.db
+
+# Temporary debugging tools with credentials
+cmd/fix_device/
+cmd/query_card/
+
+# Environment
 .env
-.env.local
+.env.*
 .env.*.local
+
+# Build output
+bin/
+__debug_bin*
 
 # IDE
 .idea/
@@ -25,15 +42,3 @@ go.work
 
 # OS
 .DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Build
-dist/
-build/
-
-# Test coverage
-*.coverprofile
-coverage.html

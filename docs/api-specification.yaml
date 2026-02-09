@@ -1,0 +1,763 @@
+openapi: 3.0.3
+info:
+  title: Commander - Unified KV Storage API
+  description: |
+    A high-performance REST API for unified key-value storage with support for multiple backends
+    (MongoDB, Redis, BBolt). Designed for edge devices and embedded systems.
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: Apache 2.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: Health
+    description: Service health and status endpoints
+  - name: KV Operations
+    description: Key-value CRUD operations
+  - name: Batch Operations
+    description: Bulk operations for multiple keys
+  - name: Namespace Management
+    description: Namespace and collection management
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: API root endpoint
+      description: Returns welcome message and API version
+      operationId: getRoot
+      responses:
+        '200':
+          description: API welcome message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RootResponse'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check if the service is healthy and running
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/kv/{namespace}/{collection}/{key}:
+    get:
+      tags:
+        - KV Operations
+      summary: Get a value
+      description: Retrieve a value from the KV store by namespace, collection, and key
+      operationId: getKV
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace (defaults to 'default' if not specified)
+          required: true
+          schema:
+            type: string
+        - name: collection
+          in: path
+          description: Collection within the namespace
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          description: Key to retrieve
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Value retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KVResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - KV Operations
+      summary: Set a value
+      description: Store a value in the KV store
+      operationId: setKV
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace
+          required: true
+          schema:
+            type: string
+        - name: collection
+          in: path
+          description: Collection within the namespace
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          description: Key to set
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KVRequestBody'
+      responses:
+        '201':
+          description: Value set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KVResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - KV Operations
+      summary: Delete a value
+      description: Remove a key-value pair from the KV store
+      operationId: deleteKV
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace
+          required: true
+          schema:
+            type: string
+        - name: collection
+          in: path
+          description: Collection within the namespace
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          description: Key to delete
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Value deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KVResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    head:
+      tags:
+        - KV Operations
+      summary: Check key existence
+      description: Check if a key exists in the KV store (returns HTTP 200 if exists, 404 if not)
+      operationId: headKV
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace
+          required: true
+          schema:
+            type: string
+        - name: collection
+          in: path
+          description: Collection within the namespace
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          description: Key to check
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key exists
+        '400':
+          description: Invalid parameters
+        '404':
+          description: Key does not exist
+        '500':
+          description: Internal server error
+
+  /api/v1/kv/{namespace}/{collection}:
+    get:
+      tags:
+        - Batch Operations
+      summary: List keys in collection
+      description: List all keys in a collection (not implemented for all backends)
+      operationId: listKeys
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace
+          required: true
+          schema:
+            type: string
+        - name: collection
+          in: path
+          description: Collection within the namespace
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of keys to return (default 1000, max 10000)
+          schema:
+            type: integer
+            default: 1000
+            maximum: 10000
+        - name: offset
+          in: query
+          description: Number of keys to skip (for pagination)
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Keys listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListKeysResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Not implemented for this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/kv/batch:
+    post:
+      tags:
+        - Batch Operations
+      summary: Batch set operation
+      description: Set multiple key-value pairs in a single request (up to 1000 operations)
+      operationId: batchSet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchSetRequest'
+      responses:
+        '200':
+          description: Batch operation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchSetResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Batch Operations
+      summary: Batch delete operation
+      description: Delete multiple keys in a single request (up to 1000 operations)
+      operationId: batchDelete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchDeleteRequest'
+      responses:
+        '200':
+          description: Batch operation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchDeleteResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/namespaces:
+    get:
+      tags:
+        - Namespace Management
+      summary: List namespaces
+      description: List all namespaces (not implemented for all backends)
+      operationId: listNamespaces
+      responses:
+        '501':
+          description: Not implemented for this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/namespaces/{namespace}/info:
+    get:
+      tags:
+        - Namespace Management
+      summary: Get namespace info
+      description: Retrieve information about a namespace
+      operationId: getNamespaceInfo
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Namespace information retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespaceInfoResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/namespaces/{namespace}/collections:
+    get:
+      tags:
+        - Namespace Management
+      summary: List collections
+      description: List all collections in a namespace (not implemented for all backends)
+      operationId: listCollections
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace name
+          required: true
+          schema:
+            type: string
+      responses:
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Not implemented for this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/namespaces/{namespace}:
+    delete:
+      tags:
+        - Namespace Management
+      summary: Delete namespace
+      description: Delete an entire namespace and all its data (not implemented for all backends)
+      operationId: deleteNamespace
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Namespace deleted
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Not implemented for this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/namespaces/{namespace}/collections/{collection}:
+    delete:
+      tags:
+        - Namespace Management
+      summary: Delete collection
+      description: Delete all keys in a collection (not implemented for all backends)
+      operationId: deleteCollection
+      parameters:
+        - name: namespace
+          in: path
+          description: Namespace name
+          required: true
+          schema:
+            type: string
+        - name: collection
+          in: path
+          description: Collection name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Collection deleted
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Not implemented for this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    RootResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Welcome to Commander API"
+        version:
+          type: string
+          example: "1.0.0"
+      required:
+        - message
+        - version
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy]
+          example: "healthy"
+        environment:
+          type: string
+          example: "STANDARD"
+        message:
+          type: string
+          example: "Commander service is running"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-03T12:34:56Z"
+      required:
+        - status
+        - message
+        - timestamp
+
+    KVRequestBody:
+      type: object
+      properties:
+        value:
+          type: object
+          description: The value to store (will be JSON-encoded)
+          example: {"name": "John", "age": 30}
+      required:
+        - value
+
+    KVResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Successfully"
+        namespace:
+          type: string
+          example: "default"
+        collection:
+          type: string
+          example: "users"
+        key:
+          type: string
+          example: "user1"
+        value:
+          type: object
+          description: The retrieved value
+          example: {"name": "John", "age": 30}
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - message
+        - namespace
+        - collection
+        - key
+        - timestamp
+
+    ListKeysResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        namespace:
+          type: string
+        collection:
+          type: string
+        keys:
+          type: array
+          items:
+            type: string
+          example: ["key1", "key2", "key3"]
+        total:
+          type: integer
+          example: 3
+        limit:
+          type: integer
+          example: 1000
+        offset:
+          type: integer
+          example: 0
+        timestamp:
+          type: string
+          format: date-time
+
+    BatchSetRequest:
+      type: object
+      properties:
+        operations:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/BatchSetOperation'
+      required:
+        - operations
+
+    BatchSetOperation:
+      type: object
+      properties:
+        namespace:
+          type: string
+        collection:
+          type: string
+        key:
+          type: string
+        value:
+          type: object
+      required:
+        - namespace
+        - collection
+        - key
+        - value
+
+    BatchSetResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Batch operation completed"
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchOperationResult'
+        success_count:
+          type: integer
+          example: 2
+        failure_count:
+          type: integer
+          example: 0
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - message
+        - results
+        - success_count
+        - failure_count
+        - timestamp
+
+    BatchDeleteRequest:
+      type: object
+      properties:
+        operations:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/BatchDeleteOperation'
+      required:
+        - operations
+
+    BatchDeleteOperation:
+      type: object
+      properties:
+        namespace:
+          type: string
+        collection:
+          type: string
+        key:
+          type: string
+      required:
+        - namespace
+        - collection
+        - key
+
+    BatchDeleteResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Batch operation completed"
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchOperationResult'
+        success_count:
+          type: integer
+          example: 2
+        failure_count:
+          type: integer
+          example: 0
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - message
+        - results
+        - success_count
+        - failure_count
+        - timestamp
+
+    BatchOperationResult:
+      type: object
+      properties:
+        namespace:
+          type: string
+        collection:
+          type: string
+        key:
+          type: string
+        success:
+          type: boolean
+        error:
+          type: string
+          description: Error message if operation failed
+      required:
+        - namespace
+        - collection
+        - key
+        - success
+
+    NamespaceInfoResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        namespace:
+          type: string
+        collections:
+          type: array
+          items:
+            type: string
+        key_count:
+          type: integer
+        size:
+          type: integer
+          format: int64
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - message
+        - namespace
+        - timestamp
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "key not found"
+        code:
+          type: string
+          example: "KEY_NOT_FOUND"
+      required:
+        - message
+        - code

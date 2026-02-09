@@ -9,12 +9,15 @@ import (
 	"sync"
 
 	"commander/internal/kv"
+
 	"go.etcd.io/bbolt"
 )
 
 // BBoltKV implements KV interface using bbolt
 // namespace = different files, collection = bucket
 // Key: card_001 / Value: {"name": "Fire Dragon", ...}
+//
+//nolint:revive // BBoltKV name is intentional to match package name
 type BBoltKV struct {
 	baseDir string
 	dbs     map[string]*bbolt.DB
@@ -24,7 +27,7 @@ type BBoltKV struct {
 // NewBBoltKV creates a new bbolt KV store
 func NewBBoltKV(baseDir string) (*BBoltKV, error) {
 	// Create base directory if it doesn't exist
-	if err := os.MkdirAll(baseDir, 0755); err != nil {
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create base directory: %w", err)
 	}
 
@@ -50,14 +53,14 @@ func (b *BBoltKV) getDB(namespace string) (*bbolt.DB, error) {
 	defer b.mu.Unlock()
 
 	// Double check after acquiring write lock
-	if db, exists := b.dbs[namespace]; exists {
-		return db, nil
+	if existingDB, exists := b.dbs[namespace]; exists {
+		return existingDB, nil
 	}
 
 	// Create database file path: <baseDir>/<namespace>.db
 	dbPath := filepath.Join(b.baseDir, fmt.Sprintf("%s.db", namespace))
-	
-	db, err := bbolt.Open(dbPath, 0600, nil)
+
+	db, err := bbolt.Open(dbPath, 0o600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database %s: %w", dbPath, err)
 	}
@@ -183,14 +186,17 @@ func (b *BBoltKV) Close() error {
 // Ping checks if the connection is alive
 func (b *BBoltKV) Ping(ctx context.Context) error {
 	// Try to open a test database to verify the base directory is accessible
-	testDB, err := bbolt.Open(filepath.Join(b.baseDir, ".ping.db"), 0600, nil)
+	testDB, err := bbolt.Open(filepath.Join(b.baseDir, ".ping.db"), 0o600, nil)
 	if err != nil {
 		return errors.Join(kv.ErrConnectionFailed, err)
 	}
-	defer testDB.Close()
+	defer func() {
+		if closeErr := testDB.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	return testDB.View(func(tx *bbolt.Tx) error {
 		return nil
 	})
 }
-

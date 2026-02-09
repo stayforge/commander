@@ -11,22 +11,26 @@ import (
 
 	"commander/internal/config"
 	"commander/internal/database"
+	"commander/internal/database/mongodb"
 	"commander/internal/handlers"
 	"commander/internal/kv"
+	"commander/internal/services"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 var (
-	version = "dev" // 默認值
-	commit  = "unknown"
-	date    = "unknown"
+	version = "dev"     // 默認值
+	commit  = "unknown" // set via ldflags during build
+	date    = "unknown" // set via ldflags during build
 )
 
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
 	cfg.Version = version
+	log.Printf("Commander version: %s (commit: %s, built: %s)", version, commit, date)
 
 	// Set Gin mode based on environment
 	if cfg.Server.Environment == "PRODUCTION" {
@@ -38,13 +42,32 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize KV store: %v", err)
 	}
-	defer kvStore.Close()
+	defer func() {
+		if closeErr := kvStore.Close(); closeErr != nil {
+			log.Printf("Failed to close KV store: %v", closeErr)
+		}
+	}()
 
 	// Verify KV connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	if err := kvStore.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping KV store: %v", err)
+		cancel()
+		log.Fatalf("Failed to ping KV store: %v", err) //nolint:gocritic // Intentional exit on startup failure
+	}
+	cancel()
+
+	// Initialize Card Service (only for MongoDB backend)
+	var cardService *services.CardService
+	if cfg.KV.BackendType == config.BackendMongoDB {
+		// Type assertion to get MongoDB client
+		if mongoKV, ok := kvStore.(*mongodb.MongoDBKV); ok {
+			cardService = services.NewCardService(mongoKV.GetClient())
+			log.Println("Card verification service initialized (MongoDB backend)")
+		} else {
+			log.Println("Warning: MongoDB backend expected but type assertion failed")
+		}
+	} else {
+		log.Printf("Card verification service not available (backend: %s, requires MongoDB)", cfg.KV.BackendType)
 	}
 
 	// Create Gin router
@@ -58,7 +81,7 @@ func main() {
 	handlers.Config = cfg
 
 	// Register routes
-	setupRoutes(router, kvStore)
+	setupRoutes(router, kvStore, cardService)
 
 	// Create HTTP server
 	port := ":" + cfg.Server.Port
@@ -91,7 +114,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRoutes(router *gin.Engine, kvStore kv.KV) {
+func setupRoutes(router *gin.Engine, _ kv.KV, cardService *services.CardService) {
 	// Health check
 	router.GET("/health", handlers.HealthHandler)
 
@@ -99,9 +122,59 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV) {
 	router.GET("/", handlers.RootHandler)
 
 	// API v1 routes
-	// v1 := router.Group("/api/v1")
-	// {
-	// 	// Add your API routes here
-	// 	// Example: v1.GET("/items", handlers.GetItems)
-	// }
+	v1 := router.Group("/api/v1")
+	// ========== KV CRUD operations (Commented for MVP) ==========
+	// GET /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.GET("/kv/:namespace/:collection/:key", handlers.GetKVHandler(kvStore))
+
+	// POST /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.POST("/kv/:namespace/:collection/:key", handlers.SetKVHandler(kvStore))
+
+	// DELETE /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.DELETE("/kv/:namespace/:collection/:key", handlers.DeleteKVHandler(kvStore))
+
+	// HEAD /api/v1/kv/{namespace}/{collection}/{key}
+	// v1.HEAD("/kv/:namespace/:collection/:key", handlers.HeadKVHandler(kvStore))
+
+	// ========== Batch operations (Commented for MVP) ==========
+	// POST /api/v1/kv/batch (batch set)
+	// v1.POST("/kv/batch", handlers.BatchSetHandler(kvStore))
+
+	// DELETE /api/v1/kv/batch (batch delete)
+	// v1.DELETE("/kv/batch", handlers.BatchDeleteHandler(kvStore))
+
+	// ========== List and Management (Commented for MVP) ==========
+	// GET /api/v1/kv/{namespace}/{collection} (list keys)
+	// v1.GET("/kv/:namespace/:collection", handlers.ListKeysHandler(kvStore))
+
+	// GET /api/v1/namespaces (list namespaces)
+	// v1.GET("/namespaces", handlers.ListNamespacesHandler(kvStore))
+
+	// GET /api/v1/namespaces/{namespace}/collections (list collections)
+	// v1.GET("/namespaces/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
+
+	// GET /api/v1/namespaces/{namespace}/info (get namespace info)
+	// v1.GET("/namespaces/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
+
+	// DELETE /api/v1/namespaces/{namespace} (delete namespace)
+	// v1.DELETE("/namespaces/:namespace", handlers.DeleteNamespaceHandler(kvStore))
+
+	// DELETE /api/v1/namespaces/{namespace}/collections/{collection} (delete collection)
+	// v1.DELETE("/namespaces/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
+
+	// ========== Card Verification (MVP) ==========
+	if cardService != nil {
+		// New standard API: POST /api/v1/namespaces/:namespace
+		// Header: X-Device-SN
+		// Body: plain text card number
+		// Response: 204 No Content (success) or status code only (error)
+		v1.POST("/namespaces/:namespace",
+			handlers.CardVerificationHandler(cardService))
+
+		// Legacy vguang-m350 compatibility: POST /api/v1/namespaces/:namespace/device/:device_name/vguang
+		// Body: plain text or binary card number
+		// Response: 200 "code=0000" (success) or 404 (error)
+		v1.POST("/namespaces/:namespace/device/:device_name/vguang",
+			handlers.CardVerificationVguangHandler(cardService))
+	}
 }

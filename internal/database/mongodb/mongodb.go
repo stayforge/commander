@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"commander/internal/kv"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -13,6 +14,8 @@ import (
 
 // MongoDBKV implements KV interface using MongoDB
 // namespace = database, collection = collection
+//
+//nolint:revive // MongoDBKV name is intentional to match package name
 type MongoDBKV struct {
 	client *mongo.Client
 	uri    string
@@ -48,19 +51,21 @@ func (m *MongoDBKV) getCollection(namespace, collection string) *mongo.Collectio
 }
 
 // ensureIndex ensures unique index on key for the collection
-func (m *MongoDBKV) ensureIndex(ctx context.Context, coll *mongo.Collection) {
+func (m *MongoDBKV) ensureIndex(ctx context.Context, coll *mongo.Collection) error {
 	indexModel := mongo.IndexModel{
 		Keys:    bson.D{{Key: "key", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
-	_, _ = coll.Indexes().CreateOne(ctx, indexModel)
+	_, err := coll.Indexes().CreateOne(ctx, indexModel)
+	// Ignore errors if index already exists
+	return err
 }
 
 // Get retrieves a JSON value by key from namespace and collection
 func (m *MongoDBKV) Get(ctx context.Context, namespace, collection, key string) ([]byte, error) {
 	namespace = kv.NormalizeNamespace(namespace)
 	coll := m.getCollection(namespace, collection)
-	m.ensureIndex(ctx, coll)
+	_ = m.ensureIndex(ctx, coll) //nolint:errcheck // Best effort index creation
 
 	var doc struct {
 		Key   string `bson:"key"`
@@ -82,7 +87,7 @@ func (m *MongoDBKV) Get(ctx context.Context, namespace, collection, key string) 
 func (m *MongoDBKV) Set(ctx context.Context, namespace, collection, key string, value []byte) error {
 	namespace = kv.NormalizeNamespace(namespace)
 	coll := m.getCollection(namespace, collection)
-	m.ensureIndex(ctx, coll)
+	_ = m.ensureIndex(ctx, coll) //nolint:errcheck // Best effort index creation
 
 	doc := bson.M{
 		"key":   key,
@@ -104,7 +109,7 @@ func (m *MongoDBKV) Set(ctx context.Context, namespace, collection, key string, 
 func (m *MongoDBKV) Delete(ctx context.Context, namespace, collection, key string) error {
 	namespace = kv.NormalizeNamespace(namespace)
 	coll := m.getCollection(namespace, collection)
-	
+
 	result, err := coll.DeleteOne(ctx, bson.M{"key": key})
 	if err != nil {
 		return err
@@ -119,7 +124,7 @@ func (m *MongoDBKV) Delete(ctx context.Context, namespace, collection, key strin
 func (m *MongoDBKV) Exists(ctx context.Context, namespace, collection, key string) (bool, error) {
 	namespace = kv.NormalizeNamespace(namespace)
 	coll := m.getCollection(namespace, collection)
-	
+
 	count, err := coll.CountDocuments(ctx, bson.M{"key": key})
 	if err != nil {
 		return false, err
@@ -139,3 +144,8 @@ func (m *MongoDBKV) Ping(ctx context.Context) error {
 	return m.client.Ping(ctx, nil)
 }
 
+// GetClient returns the underlying MongoDB client for advanced operations
+// This is used by business services that need MongoDB-specific features
+func (m *MongoDBKV) GetClient() *mongo.Client {
+	return m.client
+}

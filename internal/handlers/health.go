@@ -16,4 +16,3 @@ func HealthHandler(c *gin.Context) {
 		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 	})
 }
-
