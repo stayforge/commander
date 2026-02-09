@@ -28,7 +28,11 @@ type RedisKV struct {
 //   - redis://localhost:6379
 //   - redis://:password@localhost:6379
 //   - redis://localhost:6379/0
-//   - redis://:password@localhost:6379/1
+// NewRedisKV creates a Redis-backed RedisKV from the given Redis URI.
+// It accepts URIs of the form "redis://[:password@]host[:port][/db]" and derives
+// the server address, password, and database number (defaults: localhost:6379 and DB 0).
+// The function verifies connectivity by pinging the Redis server and returns an error
+// wrapping kv.ErrConnectionFailed if the ping fails. An empty uri returns an error.
 func NewRedisKV(uri string) (*RedisKV, error) {
 	if uri == "" {
 		return nil, fmt.Errorf("Redis URI is required")

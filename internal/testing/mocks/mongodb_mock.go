@@ -91,7 +91,7 @@ type MockClient struct {
 	CountDocumentsFunc func(ctx context.Context, namespace, collection, filter map[string]interface{}) (int64, error)
 }
 
-// NewMockClient creates a new mock MongoDB client
+// NewMockClient creates a MockClient with its internal Databases and Collections maps initialized.
 func NewMockClient() *MockClient {
 	return &MockClient{
 		Databases:   make(map[string]*MockDatabase),
@@ -267,7 +267,10 @@ func (d *DocumentFinder) Decode(v interface{}) error {
 
 // ===== Mock Query Filter Helper =====
 
-// ExtractKeyFromFilter extracts the key value from a BSON filter
+// ExtractKeyFromFilter extracts a string key from a bson.M filter by checking
+// the "key" field, then "sn", then "number", and returns the first string value
+// found. If the filter is not a bson.M or no matching string value is present,
+// it returns an empty string.
 func ExtractKeyFromFilter(filter interface{}) string {
 	if filterMap, ok := filter.(bson.M); ok {
 		if keyVal, exists := filterMap["key"]; exists {

@@ -21,7 +21,9 @@ type MongoDBKV struct {
 	uri    string
 }
 
-// NewMongoDBKV creates a new MongoDB KV store
+// NewMongoDBKV creates a MongoDB-backed key-value store and verifies connectivity.
+// It connects using the provided URI with a 10-second timeout and pings the server.
+// On connection or ping failure it returns an error wrapped with kv.ErrConnectionFailed.
 func NewMongoDBKV(uri string) (*MongoDBKV, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

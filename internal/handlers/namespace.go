@@ -42,7 +42,8 @@ type DeleteCollectionResponse struct {
 }
 
 // ListNamespacesHandler handles GET /api/v1/namespaces
-// Lists all namespaces (returns empty list with not-implemented message)
+// ListNamespacesHandler returns a gin.HandlerFunc that always responds with HTTP 501 Not Implemented.
+// The handler sends an ErrorResponse with Message "listing namespaces is not implemented for this backend" and Code "NOT_IMPLEMENTED".
 func ListNamespacesHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Note: Listing namespaces is not implemented for all backends
@@ -55,7 +56,10 @@ func ListNamespacesHandler(kvStore kv.KV) gin.HandlerFunc {
 }
 
 // ListCollectionsHandler handles GET /api/v1/namespaces/{namespace}/collections
-// Lists all collections in a namespace (returns empty list with not-implemented message)
+// ListCollectionsHandler provides a Gin handler that validates a namespace path parameter and responds with a not-implemented error for listing collections.
+// 
+// If the "namespace" path parameter is empty the handler responds with HTTP 400 and an ErrorResponse containing Message "namespace is required" and Code "INVALID_PARAMS".
+// If the parameter is present the handler responds with HTTP 501 and an ErrorResponse containing Message "listing collections is not implemented for this backend" and Code "NOT_IMPLEMENTED".
 func ListCollectionsHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -81,7 +85,9 @@ func ListCollectionsHandler(kvStore kv.KV) gin.HandlerFunc {
 // Deletes an entire namespace (backend-dependent)
 // Note: For BBolt, this would delete the entire .db file
 // For MongoDB, this would drop the database
-// For Redis, this would delete all keys with the namespace prefix
+// DeleteNamespaceHandler returns a gin.HandlerFunc that handles HTTP requests to delete a namespace.
+// It validates the "namespace" path parameter and responds with HTTP 400 and an error when the parameter is missing.
+// If a namespace is provided the handler responds with HTTP 501 and an error indicating namespace deletion is not implemented for this backend.
 func DeleteNamespaceHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -104,7 +110,13 @@ func DeleteNamespaceHandler(kvStore kv.KV) gin.HandlerFunc {
 }
 
 // DeleteCollectionHandler handles DELETE /api/v1/namespaces/{namespace}/collections/{collection}
-// Deletes all keys in a collection
+// DeleteCollectionHandler returns a gin.HandlerFunc that validates the "namespace" and
+// "collection" path parameters and handles collection deletion requests.
+// If either parameter is missing it responds with HTTP 400 and an ErrorResponse with
+// Message "namespace and collection are required" and Code "INVALID_PARAMS".
+// For supported backends this handler would perform collection deletion; currently it
+// responds with HTTP 501 and an ErrorResponse with Message "deleting collections is not
+// implemented for this backend" and Code "NOT_IMPLEMENTED".
 func DeleteCollectionHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -138,7 +150,8 @@ type NamespaceInfoResponse struct {
 }
 
 // GetNamespaceInfoHandler handles GET /api/v1/namespaces/{namespace}/info
-// Returns information about a namespace
+// GetNamespaceInfoHandler returns a gin.HandlerFunc that handles requests for namespace information.
+// It validates that the "namespace" path parameter is present (responding 400 with an error if missing), normalizes the namespace using kv.NormalizeNamespace, and responds 200 with a NamespaceInfoResponse containing the normalized namespace and a timestamp.
 func GetNamespaceInfoHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")

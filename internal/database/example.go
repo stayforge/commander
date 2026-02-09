@@ -12,7 +12,14 @@ import (
 	"commander/internal/config"
 )
 
-// ExampleUsage demonstrates how to use the KV abstraction layer with namespace and collection
+// ExampleUsage demonstrates end-to-end usage of the KV abstraction: creating a store from
+// configuration, verifying connectivity, and performing set, exists, get, and delete
+// operations scoped by namespace and collection.
+// 
+// The example shows loading configuration from the environment, creating and closing the
+// KV client, pinging the store, using a JSON value, and handling a default namespace when
+// an empty namespace is provided. It prints simple status messages for each operation and
+// exits on unrecoverable errors.
 func ExampleUsage() {
 	// Load configuration from environment variables
 	cfg := config.LoadConfig()

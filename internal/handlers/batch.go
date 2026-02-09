@@ -63,7 +63,11 @@ type BatchDeleteResponse struct {
 }
 
 // BatchSetHandler handles POST /api/v1/kv/batch (set)
-// Sets multiple key-value pairs in a single request
+// BatchSetHandler returns a Gin handler that performs multiple set operations against the provided KV store.
+// It accepts a JSON BatchSetRequest containing one or more operations and responds with a BatchSetResponse
+// that includes per-operation results, aggregate success and failure counts, and a UTC timestamp.
+// The handler responds with HTTP 400 for an invalid request body or when the operations list is empty;
+// individual operation failures are reported in the returned Results slice.
 func BatchSetHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req BatchSetRequest
@@ -142,7 +146,13 @@ func BatchSetHandler(kvStore kv.KV) gin.HandlerFunc {
 }
 
 // BatchDeleteHandler handles DELETE /api/v1/kv/batch (delete)
-// Deletes multiple keys in a single request
+// BatchDeleteHandler returns a gin handler that processes a batch delete request using the provided KV store.
+// 
+// The handler accepts a JSON BatchDeleteRequest containing one or more delete operations, validates each
+// operation (namespace, collection, key), normalizes namespaces, and attempts to delete each key from the
+// KV store. The response is a BatchDeleteResponse containing per-operation results, aggregate success and
+// failure counts, and a UTC timestamp. The handler responds with 400 for invalid request bodies or empty
+// operations and 200 when the batch has been processed.
 func BatchDeleteHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req BatchDeleteRequest
@@ -230,7 +240,10 @@ type ListKeysResponse struct {
 }
 
 // ListKeysHandler handles GET /api/v1/kv/{namespace}/{collection}
-// Lists all keys in a collection (backend-dependent, may not be available for all backends)
+// ListKeysHandler returns a gin.HandlerFunc that handles requests to list keys in a collection.
+// It validates required path parameters `namespace` and `collection`, parses optional `limit`
+// (default 1000, capped at 10000) and `offset` (default 0) query parameters, and responds with
+// HTTP 501 Not Implemented indicating that key listing is not supported by the backend.
 func ListKeysHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -268,7 +281,8 @@ func ListKeysHandler(kvStore kv.KV) gin.HandlerFunc {
 
 // Helper functions
 
-// scanInt parses a string as an integer
+// scanInt parses s as a base-10 integer and stores the result in v.
+// It returns an error if s is not a valid integer representation.
 func scanInt(s string, v *int) error {
 	n, err := parseStringToInt(s)
 	if err != nil {
@@ -278,7 +292,9 @@ func scanInt(s string, v *int) error {
 	return nil
 }
 
-// parseStringToInt parses a string to an integer using simple logic
+// parseStringToInt parses s as a base-10 integer and returns the integer value or an error.
+// It accepts an optional leading '-' for negative values. It returns an error if s is empty
+// or if any non-digit character (other than a leading '-') is present.
 func parseStringToInt(s string) (int, error) {
 	if s == "" {
 		return 0, errors.New("empty string")

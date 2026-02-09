@@ -15,7 +15,7 @@ var (
 	DefaultNamespace = "default"
 )
 
-// NormalizeNamespace returns the namespace, or "default" if empty
+// NormalizeNamespace returns the provided namespace or DefaultNamespace when the input is empty.
 func NormalizeNamespace(namespace string) string {
 	if namespace == "" {
 		return DefaultNamespace

@@ -18,7 +18,7 @@ import (
 // Header: X-Device-SN: <device_sn>
 // Body: plain text card number
 // Success: 204 No Content
-// Error: status code only (no body, logged to console)
+// HTTP status codes.
 func CardVerificationHandler(cardService *services.CardService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -65,7 +65,13 @@ func CardVerificationHandler(cardService *services.CardService) gin.HandlerFunc 
 // POST /api/v1/namespaces/:namespace/device/:device_name/vguang
 // Body: plain text or binary card number
 // Success: 200 "code=0000"
-// Error: 404 (no body, logged to console)
+// CardVerificationVguangHandler returns a Gin handler that verifies card numbers sent by vguang-m350 devices.
+// 
+// The handler expects URL parameters `namespace` and `device_name`. It reads the raw request body, derives a
+// normalized card number using vguang-specific rules (via parseVguangCardNumber), and calls CardService.VerifyCard
+// with the request context, namespace, device name, and parsed card number. On success it responds with HTTP 200
+// and the exact body "code=0000". Any failure to read the body, parse a card number, or verify the card results
+// in an HTTP 404 response; failures are also logged.
 func CardVerificationVguangHandler(cardService *services.CardService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -104,7 +110,7 @@ func CardVerificationVguangHandler(cardService *services.CardService) gin.Handle
 
 // parseVguangCardNumber parses card number from vguang device
 // If alphanumeric: use as-is (uppercase)
-// Otherwise: reverse bytes and convert to hex (uppercase)
+// uppercase hexadecimal string.
 func parseVguangCardNumber(rawBody []byte) string {
 	if len(rawBody) == 0 {
 		return ""
@@ -127,7 +133,8 @@ func parseVguangCardNumber(rawBody []byte) string {
 	return strings.ToUpper(hex.EncodeToString(reversed))
 }
 
-// isAlphanumeric checks if string contains only letters, digits, and hyphens
+// isAlphanumeric reports whether s contains only ASCII letters, digits, or hyphens.
+// It returns true when every rune is 0-9, A-Z, a-z, or '-', and false for any other character.
 func isAlphanumeric(s string) bool {
 	for _, c := range s {
 		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-') {
@@ -137,7 +144,10 @@ func isAlphanumeric(s string) bool {
 	return true
 }
 
-// mapErrorToStatusCode maps service errors to HTTP status codes
+// mapErrorToStatusCode converts service-layer errors into HTTP status codes.
+// Errors indicating a missing device or card return 404 Not Found.
+// Errors indicating an inactive device, unauthorized card, expired card, or card not yet valid return 403 Forbidden.
+// All other errors return 500 Internal Server Error.
 func mapErrorToStatusCode(err error) int {
 	switch {
 	case errors.Is(err, services.ErrDeviceNotFound):

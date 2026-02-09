@@ -28,7 +28,7 @@ type CardService struct {
 	client *mongo.Client
 }
 
-// NewCardService creates a new card service
+// NewCardService creates a new CardService that uses the provided MongoDB client to access the database.
 func NewCardService(client *mongo.Client) *CardService {
 	return &CardService{
 		client: client,

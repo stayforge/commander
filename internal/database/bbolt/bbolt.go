@@ -24,7 +24,9 @@ type BBoltKV struct {
 	mu      sync.RWMutex
 }
 
-// NewBBoltKV creates a new bbolt KV store
+// NewBBoltKV creates a BBolt-backed key-value store rooted at baseDir.
+// It ensures baseDir exists (creating it with mode 0755) and returns an
+// initialized *BBoltKV or an error if the base directory cannot be created.
 func NewBBoltKV(baseDir string) (*BBoltKV, error) {
 	// Create base directory if it doesn't exist
 	if err := os.MkdirAll(baseDir, 0o755); err != nil {

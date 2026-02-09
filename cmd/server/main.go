@@ -26,6 +26,7 @@ var (
 	date    = "unknown" // set via ldflags during build
 )
 
+// main is the program entry point. It loads configuration, sets Gin mode, initializes the KV store (and a MongoDB-backed CardService when configured), registers routes and middleware, starts the HTTP server on the configured port, and performs a graceful shutdown on SIGINT/SIGTERM with a 5-second timeout.
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
@@ -114,6 +115,8 @@ func main() {
 	log.Println("Server exited")
 }
 
+// setupRoutes registers HTTP routes on the provided Gin router, including health and root endpoints and an /api/v1 group; when cardService is non-nil it also registers card verification endpoints (standard and legacy vguang).
+// The router argument is the Gin engine to attach routes to; cardService enables card verification routes when non-nil.
 func setupRoutes(router *gin.Engine, _ kv.KV, cardService *services.CardService) {
 	// Health check
 	router.GET("/health", handlers.HealthHandler)

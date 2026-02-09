@@ -34,7 +34,11 @@ type ErrorResponse struct {
 }
 
 // GetKVHandler handles GET /api/v1/kv/{namespace}/{collection}/{key}
-// Retrieves a value from the KV store
+// GetKVHandler produces an HTTP handler for GET /api/v1/kv/{namespace}/{collection}/{key} that retrieves a JSON-decoded value from the provided KV store.
+// 
+// The handler validates that namespace, collection, and key are present, normalizes the namespace, and attempts to fetch the value from the KV store.
+// On a missing key it responds with 404 and code "KEY_NOT_FOUND". On JSON decode failures it responds with 500 and code "DECODE_ERROR". On other retrieval failures it responds with 500 and code "INTERNAL_ERROR".
+// On success the handler responds with 200 and a KVResponse containing the decoded value, request identifiers, and a UTC RFC3339 timestamp.
 func GetKVHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -93,7 +97,8 @@ func GetKVHandler(kvStore kv.KV) gin.HandlerFunc {
 }
 
 // SetKVHandler handles POST /api/v1/kv/{namespace}/{collection}/{key}
-// Sets a value in the KV store
+// SetKVHandler returns a gin.HandlerFunc that handles POST /api/v1/kv/{namespace}/{collection}/{key} requests and stores the provided JSON-encodable value in the specified namespace, collection, and key of the given KV store.
+// The handler validates path parameters and request body, normalizes the namespace, encodes the value to JSON, writes it to the KV store, and responds with a KVResponse containing the stored value and a UTC timestamp on success or an ErrorResponse with an appropriate HTTP status on failure.
 func SetKVHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -154,7 +159,11 @@ func SetKVHandler(kvStore kv.KV) gin.HandlerFunc {
 }
 
 // DeleteKVHandler handles DELETE /api/v1/kv/{namespace}/{collection}/{key}
-// Deletes a value from the KV store
+// DeleteKVHandler returns a gin.HandlerFunc that handles DELETE requests to remove a key from the KV store.
+// It validates the namespace, collection, and key parameters, normalizes the namespace, and calls the store's
+// Delete method. On success it responds with a 200 JSON KVResponse containing namespace, collection, key and a
+// UTC timestamp. If parameters are missing it responds with 400 and an ErrorResponse (code "INVALID_PARAMS"),
+// and if the store delete fails it responds with 500 and an ErrorResponse (code "INTERNAL_ERROR").
 func DeleteKVHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -194,7 +203,7 @@ func DeleteKVHandler(kvStore kv.KV) gin.HandlerFunc {
 }
 
 // HeadKVHandler handles HEAD /api/v1/kv/{namespace}/{collection}/{key}
-// Checks if a key exists in the KV store
+// when the key exists, 404 when it does not, 400 when required parameters are missing, and 500 on internal errors.
 func HeadKVHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		namespace := c.Param("namespace")
@@ -228,7 +237,7 @@ func HeadKVHandler(kvStore kv.KV) gin.HandlerFunc {
 
 // Helper functions
 
-// marshalJSON converts a value to JSON bytes
+// marshalJSON converts v to JSON bytes. If v is a string it is returned unchanged (treated as pre-encoded JSON); otherwise v is encoded using json.Marshal.
 func marshalJSON(value interface{}) ([]byte, error) {
 	// If already a string, assume it's JSON
 	if str, ok := value.(string); ok {
@@ -239,7 +248,8 @@ func marshalJSON(value interface{}) ([]byte, error) {
 	return json.Marshal(value)
 }
 
-// unmarshalJSON converts JSON bytes to a value
+// unmarshalJSON unmarshals JSON-encoded data into v.
+// v must be a pointer to the value to populate; returns an error if decoding fails.
 func unmarshalJSON(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }

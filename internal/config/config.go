@@ -42,7 +42,10 @@ const (
 	BackendBBolt   BackendType = "bbolt"
 )
 
-// LoadConfig loads configuration from environment variables
+// LoadConfig constructs a Config populated from environment variables.
+// It selects the KV backend from DATABASE (case-insensitive): "mongodb", "redis", or "bbolt" (default).
+// Server port defaults to "8080" and environment to "STANDARD". MongoDB and Redis URIs are taken
+// from MONGODB_URI and REDIS_URI (empty by default). BBolt data path defaults to "/var/lib/stayforge/commander".
 func LoadConfig() *Config {
 	// Get DATABASE type (case-insensitive), default to bbolt
 	databaseType := strings.ToLower(getEnv("DATABASE", "bbolt"))
@@ -81,6 +84,7 @@ func LoadConfig() *Config {
 	}
 }
 
+// getEnv returns the value of the environment variable named by key, or defaultValue if the variable is unset or empty.
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value

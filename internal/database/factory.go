@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-// NewKV creates a new KV store based on configuration
+// NewKV creates a kv.KV implementation configured according to cfg.KV.BackendType.
+// It validates that MongoURI or RedisURI are provided when those backends are selected and returns an error for unsupported backend types.
 func NewKV(cfg *config.Config) (kv.KV, error) {
 	switch cfg.KV.BackendType {
 	case config.BackendMongoDB:
