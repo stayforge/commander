@@ -24,6 +24,13 @@ go.work
 cmd/fix_device/
 cmd/query_card/
 
+# Environment
+.env
+
+# Build output
+bin/
+__debug_bin*
+
 # IDE
 .idea/
 .vscode/
