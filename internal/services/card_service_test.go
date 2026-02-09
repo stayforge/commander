@@ -12,31 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// mockMongoClient provides a simplified mock client for testing
-// Note: Full integration tests should use testcontainers for real MongoDB
-type mockMongoClient struct {
-	devices map[string]*models.Device
-	cards   map[string]*models.Card
-}
-
-// Helper function to get mock device from namespace-keyed map
-func (m *mockMongoClient) getDevice(ctx context.Context, namespace, deviceSN string) (*models.Device, error) {
-	key := namespace + ":" + deviceSN
-	if device, exists := m.devices[key]; exists {
-		return device, nil
-	}
-	return nil, mongo.ErrNoDocuments
-}
-
-// Helper function to get mock card from namespace-keyed map
-func (m *mockMongoClient) getCard(ctx context.Context, namespace, cardNumber string) (*models.Card, error) {
-	key := namespace + ":" + cardNumber
-	if card, exists := m.cards[key]; exists {
-		return card, nil
-	}
-	return nil, mongo.ErrNoDocuments
-}
-
 func TestCardIsValid(t *testing.T) {
 	now := time.Now()
 

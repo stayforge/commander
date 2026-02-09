@@ -35,7 +35,7 @@ func (m *MockCollection) InsertOne(ctx context.Context, document interface{}) (*
 }
 
 // UpdateOne mocks mongo.Collection.UpdateOne
-func (m *MockCollection) UpdateOne(ctx context.Context, filter interface{}, update interface{}) (*mongo.UpdateResult, error) {
+func (m *MockCollection) UpdateOne(ctx context.Context, filter, update interface{}) (*mongo.UpdateResult, error) {
 	if m.UpdateErr != nil {
 		return nil, m.UpdateErr
 	}
@@ -153,7 +153,7 @@ func (m *MockClient) SetupCard(namespace string, card *models.Card) {
 }
 
 // GetDevice retrieves a device from the mock database
-func (m *MockClient) GetDevice(namespace string, sn string) (*models.Device, error) {
+func (m *MockClient) GetDevice(namespace, sn string) (*models.Device, error) {
 	if _, exists := m.Collections[namespace]; !exists {
 		return nil, mongo.ErrNoDocuments
 	}
@@ -169,7 +169,7 @@ func (m *MockClient) GetDevice(namespace string, sn string) (*models.Device, err
 }
 
 // GetCard retrieves a card from the mock database
-func (m *MockClient) GetCard(namespace string, cardNumber string) (*models.Card, error) {
+func (m *MockClient) GetCard(namespace, cardNumber string) (*models.Card, error) {
 	if _, exists := m.Collections[namespace]; !exists {
 		return nil, mongo.ErrNoDocuments
 	}
@@ -271,13 +271,19 @@ func (d *DocumentFinder) Decode(v interface{}) error {
 func ExtractKeyFromFilter(filter interface{}) string {
 	if filterMap, ok := filter.(bson.M); ok {
 		if keyVal, exists := filterMap["key"]; exists {
-			return keyVal.(string)
+			if s, ok := keyVal.(string); ok {
+				return s
+			}
 		}
 		if snVal, exists := filterMap["sn"]; exists {
-			return snVal.(string)
+			if s, ok := snVal.(string); ok {
+				return s
+			}
 		}
 		if numberVal, exists := filterMap["number"]; exists {
-			return numberVal.(string)
+			if s, ok := numberVal.(string); ok {
+				return s
+			}
 		}
 	}
 	return ""

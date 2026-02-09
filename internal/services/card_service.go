@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// Card verification errors.
 var (
 	ErrDeviceNotFound    = errors.New("device not found")
 	ErrDeviceNotActive   = errors.New("device not active")

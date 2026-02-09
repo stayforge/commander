@@ -69,9 +69,6 @@ func ListCollectionsHandler(kvStore kv.KV) gin.HandlerFunc {
 			return
 		}
 
-		// Normalize namespace
-		namespace = kv.NormalizeNamespace(namespace)
-
 		// Note: Listing collections is not implemented for all backends
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
 			Message: "listing collections is not implemented for this backend",
@@ -98,11 +95,6 @@ func DeleteNamespaceHandler(kvStore kv.KV) gin.HandlerFunc {
 			return
 		}
 
-		// Normalize namespace (but prevent deletion of empty string)
-		if namespace != "default" && namespace != kv.DefaultNamespace {
-			// For safety, we require explicit namespace name, not empty string
-		}
-
 		// Note: Namespace deletion is not implemented for all backends
 		c.JSON(http.StatusNotImplemented, ErrorResponse{
 			Message: "deleting namespaces is not implemented for this backend",
@@ -126,9 +118,6 @@ func DeleteCollectionHandler(kvStore kv.KV) gin.HandlerFunc {
 			})
 			return
 		}
-
-		// Normalize namespace
-		namespace = kv.NormalizeNamespace(namespace)
 
 		// Note: Collection deletion is not implemented for all backends
 		c.JSON(http.StatusNotImplemented, ErrorResponse{

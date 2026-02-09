@@ -1,6 +1,7 @@
 package bbolt
 
 import (
+	"bytes"
 	"commander/internal/kv"
 	"context"
 	"testing"
@@ -50,7 +51,7 @@ func TestBBoltKV_SetAndGet(t *testing.T) {
 		t.Fatalf("Failed to get value: %v", err)
 	}
 
-	if string(retrieved) != string(value) {
+	if !bytes.Equal(retrieved, value) {
 		t.Errorf("Expected value %s, got %s", value, retrieved)
 	}
 }
@@ -191,7 +192,7 @@ func TestBBoltKV_MultipleNamespaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from namespace1: %v", err)
 	}
-	if string(retrieved1) != string(value1) {
+	if !bytes.Equal(retrieved1, value1) {
 		t.Errorf("Expected value %s, got %s", value1, retrieved1)
 	}
 
@@ -200,7 +201,7 @@ func TestBBoltKV_MultipleNamespaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from namespace2: %v", err)
 	}
-	if string(retrieved2) != string(value2) {
+	if !bytes.Equal(retrieved2, value2) {
 		t.Errorf("Expected value %s, got %s", value2, retrieved2)
 	}
 }
@@ -236,7 +237,7 @@ func TestBBoltKV_MultipleCollections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from users: %v", err)
 	}
-	if string(retrieved1) != string(value1) {
+	if !bytes.Equal(retrieved1, value1) {
 		t.Errorf("Expected value %s, got %s", value1, retrieved1)
 	}
 
@@ -245,7 +246,7 @@ func TestBBoltKV_MultipleCollections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from posts: %v", err)
 	}
-	if string(retrieved2) != string(value2) {
+	if !bytes.Equal(retrieved2, value2) {
 		t.Errorf("Expected value %s, got %s", value2, retrieved2)
 	}
 }
@@ -275,7 +276,7 @@ func TestBBoltKV_DefaultNamespace(t *testing.T) {
 		t.Fatalf("Failed to get value: %v", err)
 	}
 
-	if string(retrieved) != string(value) {
+	if !bytes.Equal(retrieved, value) {
 		t.Errorf("Expected value %s, got %s", value, retrieved)
 	}
 }
@@ -353,7 +354,7 @@ func TestBBoltKV_UpdateValue(t *testing.T) {
 		t.Fatalf("Failed to get value: %v", err)
 	}
 
-	if string(retrieved) != string(value2) {
+	if !bytes.Equal(retrieved, value2) {
 		t.Errorf("Expected updated value %s, got %s", value2, retrieved)
 	}
 }

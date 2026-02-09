@@ -208,7 +208,7 @@ func TestListKeysHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("GET",
 				"/api/v1/kv/"+tt.namespace+"/"+tt.collection,
-				nil)
+				http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 

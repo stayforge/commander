@@ -254,11 +254,8 @@ func ListKeysHandler(kvStore kv.KV) gin.HandlerFunc {
 			}
 		}
 		if offsetParam := c.Query("offset"); offsetParam != "" {
-			_ = scanInt(offsetParam, &offset) // nolint:errcheck
+			_ = scanInt(offsetParam, &offset) //nolint:errcheck // offset parsing failure is intentionally ignored, default 0 is used
 		}
-
-		// Normalize namespace
-		namespace = kv.NormalizeNamespace(namespace)
 
 		// Try to list keys (this may not be supported by all backends)
 		// For now, return a not-implemented response

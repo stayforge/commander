@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"bytes"
 	"commander/internal/kv"
 	"context"
 	"testing"
@@ -8,7 +9,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 )
 
-func setupMiniredis(t *testing.T) (*miniredis.Miniredis, string) {
+func setupMiniredis(t *testing.T) (mr *miniredis.Miniredis, uri string) {
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("Failed to start miniredis: %v", err)
@@ -114,7 +115,7 @@ func TestRedisKV_SetAndGet(t *testing.T) {
 		t.Fatalf("Failed to get value: %v", err)
 	}
 
-	if string(retrieved) != string(value) {
+	if !bytes.Equal(retrieved, value) {
 		t.Errorf("Expected value %s, got %s", value, retrieved)
 	}
 }
@@ -297,7 +298,7 @@ func TestRedisKV_NamespaceIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from namespace1: %v", err)
 	}
-	if string(retrieved1) != string(value1) {
+	if !bytes.Equal(retrieved1, value1) {
 		t.Errorf("Expected value %s, got %s", value1, retrieved1)
 	}
 
@@ -306,7 +307,7 @@ func TestRedisKV_NamespaceIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from namespace2: %v", err)
 	}
-	if string(retrieved2) != string(value2) {
+	if !bytes.Equal(retrieved2, value2) {
 		t.Errorf("Expected value %s, got %s", value2, retrieved2)
 	}
 }
@@ -344,7 +345,7 @@ func TestRedisKV_CollectionIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from users: %v", err)
 	}
-	if string(retrieved1) != string(value1) {
+	if !bytes.Equal(retrieved1, value1) {
 		t.Errorf("Expected value %s, got %s", value1, retrieved1)
 	}
 
@@ -353,7 +354,7 @@ func TestRedisKV_CollectionIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get value from posts: %v", err)
 	}
-	if string(retrieved2) != string(value2) {
+	if !bytes.Equal(retrieved2, value2) {
 		t.Errorf("Expected value %s, got %s", value2, retrieved2)
 	}
 }
@@ -385,7 +386,7 @@ func TestRedisKV_DefaultNamespace(t *testing.T) {
 		t.Fatalf("Failed to get value: %v", err)
 	}
 
-	if string(retrieved) != string(value) {
+	if !bytes.Equal(retrieved, value) {
 		t.Errorf("Expected value %s, got %s", value, retrieved)
 	}
 }
@@ -457,7 +458,7 @@ func TestRedisKV_UpdateValue(t *testing.T) {
 		t.Fatalf("Failed to get value: %v", err)
 	}
 
-	if string(retrieved) != string(value2) {
+	if !bytes.Equal(retrieved, value2) {
 		t.Errorf("Expected updated value %s, got %s", value2, retrieved)
 	}
 }

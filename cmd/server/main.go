@@ -114,7 +114,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRoutes(router *gin.Engine, kvStore kv.KV, cardService *services.CardService) {
+func setupRoutes(router *gin.Engine, _ kv.KV, cardService *services.CardService) {
 	// Health check
 	router.GET("/health", handlers.HealthHandler)
 
@@ -123,8 +123,7 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV, cardService *services.CardSe
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
-	{
-		// ========== KV CRUD operations (Commented for MVP) ==========
+	// ========== KV CRUD operations (Commented for MVP) ==========
 		// GET /api/v1/kv/{namespace}/{collection}/{key}
 		// v1.GET("/kv/:namespace/:collection/:key", handlers.GetKVHandler(kvStore))
 
@@ -178,5 +177,4 @@ func setupRoutes(router *gin.Engine, kvStore kv.KV, cardService *services.CardSe
 			v1.POST("/namespaces/:namespace/device/:device_name/vguang",
 				handlers.CardVerificationVguangHandler(cardService))
 		}
-	}
 }

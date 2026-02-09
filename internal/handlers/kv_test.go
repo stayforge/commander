@@ -134,7 +134,7 @@ func TestGetKVHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("GET",
 				"/api/v1/kv/"+tt.namespace+"/"+tt.collection+"/"+tt.key,
-				nil)
+				http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -264,7 +264,7 @@ func TestDeleteKVHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("DELETE",
 				"/api/v1/kv/"+tt.namespace+"/"+tt.collection+"/"+tt.key,
-				nil)
+				http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -320,7 +320,7 @@ func TestHeadKVHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("HEAD",
 				"/api/v1/kv/"+tt.namespace+"/"+tt.collection+"/"+tt.key,
-				nil)
+				http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 

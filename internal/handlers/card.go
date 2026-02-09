@@ -114,7 +114,7 @@ func parseVguangCardNumber(rawBody []byte) string {
 	text := strings.TrimSpace(string(rawBody))
 
 	// Check if alphanumeric (with hyphens)
-	if len(text) > 0 && isAlphanumeric(text) {
+	if text != "" && isAlphanumeric(text) {
 		// Convert to uppercase for consistency
 		return strings.ToUpper(text)
 	}

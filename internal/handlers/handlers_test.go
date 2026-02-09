@@ -31,7 +31,7 @@ func TestHealthHandler(t *testing.T) {
 	router.GET("/health", HealthHandler)
 
 	// Create request
-	req, _ := http.NewRequest("GET", "/health", nil)
+	req, _ := http.NewRequest("GET", "/health", http.NoBody)
 	w := httptest.NewRecorder()
 
 	// Perform request
@@ -79,7 +79,7 @@ func TestRootHandler(t *testing.T) {
 	router.GET("/", RootHandler)
 
 	// Create request
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequest("GET", "/", http.NoBody)
 	w := httptest.NewRecorder()
 
 	// Perform request
@@ -126,7 +126,7 @@ func TestRootHandler_WithDifferentVersion(t *testing.T) {
 	router.GET("/", RootHandler)
 
 	// Create request
-	req, _ := http.NewRequest("GET", "/", nil)
+	req, _ := http.NewRequest("GET", "/", http.NoBody)
 	w := httptest.NewRecorder()
 
 	// Perform request
