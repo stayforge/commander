@@ -217,8 +217,8 @@ func TestListKeysHandler(t *testing.T) {
 	}
 }
 
-// TestParseStringToInt tests the integer parsing function
-func TestParseStringToInt(t *testing.T) {
+// TestScanInt tests the integer scanning function
+func TestScanInt(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       string
@@ -259,7 +259,8 @@ func TestParseStringToInt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseStringToInt(tt.input)
+			var result int
+			err := scanInt(tt.input, &result)
 			if tt.shouldError {
 				assert.Error(t, err)
 			} else {

@@ -230,12 +230,6 @@ func HeadKVHandler(kvStore kv.KV) gin.HandlerFunc {
 
 // marshalJSON converts a value to JSON bytes
 func marshalJSON(value interface{}) ([]byte, error) {
-	// If already a string, assume it's JSON
-	if str, ok := value.(string); ok {
-		return []byte(str), nil
-	}
-
-	// Otherwise use Go's JSON marshaling
 	return json.Marshal(value)
 }
 

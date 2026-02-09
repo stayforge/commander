@@ -26,6 +26,8 @@ cmd/query_card/
 
 # Environment
 .env
+.env.*
+.env.*.local
 
 # Build output
 bin/

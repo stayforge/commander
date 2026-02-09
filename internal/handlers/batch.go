@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"commander/internal/kv"
@@ -270,41 +270,10 @@ func ListKeysHandler(kvStore kv.KV) gin.HandlerFunc {
 
 // scanInt parses a string as an integer
 func scanInt(s string, v *int) error {
-	n, err := parseStringToInt(s)
+	n, err := strconv.Atoi(s)
 	if err != nil {
 		return err
 	}
 	*v = n
 	return nil
-}
-
-// parseStringToInt parses a string to an integer using simple logic
-func parseStringToInt(s string) (int, error) {
-	if s == "" {
-		return 0, errors.New("empty string")
-	}
-
-	result := 0
-	negative := false
-
-	// Check for negative sign
-	start := 0
-	if s[0] == '-' {
-		negative = true
-		start = 1
-	}
-
-	// Parse digits
-	for i := start; i < len(s); i++ {
-		if s[i] < '0' || s[i] > '9' {
-			return 0, errors.New("invalid character in number")
-		}
-		result = result*10 + int(s[i]-'0')
-	}
-
-	if negative {
-		result = -result
-	}
-
-	return result, nil
 }
