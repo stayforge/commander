@@ -7,8 +7,7 @@
 [![Codecov](https://img.shields.io/codecov/c/github/stayforge/access-authorization-service?style=for-the-badge&logo=codecov)](https://codecov.io/gh/stayforge/access-authorization-service)
 [![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 
-
-A high-performance Go-based authentication service for verifying device access using card-based authorization with MongoDB Atlas backend.
+A high-performance, Go-based control plane for Stayforge IoT devices. Designed for maximum portability, it can be deployed in any Docker-compatible environment—from public clouds to local edge servers.
 
 ## 🌐 Domain
 authorization.access.stayforge.net
