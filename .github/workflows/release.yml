@@ -112,7 +112,7 @@ jobs:
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.version }}
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-  push-DOCKER:
+  push-dockerhub:
     needs: build
     runs-on: ubuntu-latest
     steps:
