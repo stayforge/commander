@@ -12,7 +12,7 @@ A high-performance Go KV storage abstraction service for Stayforge edge devices.
 
 Commander provides a pluggable storage layer through the `KV` interface:
 
-```
+```text
                   +-----------+
                   | Commander |
                   |  (Gin)    |
@@ -37,7 +37,7 @@ Commander provides a pluggable storage layer through the `KV` interface:
 
 ## Project Structure
 
-```
+```text
 .
 ├── cmd/
 │   ├── server/
