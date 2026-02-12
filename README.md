@@ -1,283 +1,203 @@
-# Stayforge Commander (Access Authorization Service)
+# Stayforge Commander
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/stayforge/access-authorization-service?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/stayforge/commander?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
 [![Gin](https://img.shields.io/badge/Gin-008ECF?style=for-the-badge&logo=gin&logoColor=white)](https://gin-gonic.com/)
-[![GitHub License](https://img.shields.io/github/license/stayforge/access-authorization-service?style=for-the-badge)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/stayforge/access-authorization-service?style=for-the-badge)](https://github.com/stayforge/access-authorization-service/stargazers)
-[![Codecov](https://img.shields.io/codecov/c/github/stayforge/access-authorization-service?style=for-the-badge&logo=codecov)](https://codecov.io/gh/stayforge/access-authorization-service)
-[![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![GitHub License](https://img.shields.io/github/license/stayforge/commander?style=for-the-badge)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/stayforge/commander?style=for-the-badge)](https://github.com/stayforge/commander/stargazers)
+[![Codecov](https://img.shields.io/codecov/c/github/stayforge/commander?style=for-the-badge&logo=codecov)](https://codecov.io/gh/stayforge/commander)
 
-A high-performance, Go-based control plane for Stayforge IoT devices. Designed for maximum portability, it can be deployed in any Docker-compatible environment—from public clouds to local edge servers.
+A high-performance Go KV storage abstraction service for Stayforge edge devices. Supports **BBolt**, **MongoDB**, and **Redis** backends behind a unified interface. Designed for maximum portability, it can be deployed in any Docker-compatible environment -- from public clouds to local edge servers.
 
-## 🌐 Domain
-authorization.access.stayforge.net
+## Architecture
 
-## 🏗️ Architecture
+Commander provides a pluggable storage layer through the `KV` interface:
 
-This service is a complete rewrite from Python/FastAPI to Go/Gin, providing:
-
-- **Card-based Authentication**: Validates device access based on card credentials
-- **Time-based Access Control**: Enforces activation and expiration times with NTP drift compensation
-- **Device Authorization**: Restricts access to pre-authorized devices
-- **MongoDB Atlas Integration**: Cloud-native database backend
-- **RESTful API**: Clean HTTP endpoints for device identification
-
-## 📁 Project Structure
-
+```text
+                  +-----------+
+                  | Commander |
+                  |  (Gin)    |
+                  +-----+-----+
+                        |
+              +---------+---------+
+              |    KV Interface   |
+              | Get/Set/Delete/   |
+              | Exists/Ping       |
+              +---------+---------+
+              |         |         |
+         +----+--+ +----+---+ +--+----+
+         | BBolt | | MongoDB| | Redis |
+         +-------+ +--------+ +-------+
 ```
+
+| Backend | Best For | Data Model |
+|---------|----------|------------|
+| **BBolt** (default) | Edge devices, single-node, zero config | Namespace = DB file, Collection = bucket |
+| **MongoDB** | Cloud, distributed, complex queries | Namespace = database, Collection = collection |
+| **Redis** | High-performance caching, clustering | Key = `namespace:collection:key` |
+
+## Project Structure
+
+```text
 .
 ├── cmd/
-│   └── server/
-│       └── main.go              # Application entry point
+│   ├── server/
+│   │   └── main.go                 # Application entry point
+│   ├── fix_device/                 # Utility: fix device records
+│   └── query_card/                 # Utility: query card records
 ├── internal/
-│   ├── config/
-│   │   └── config.go            # Configuration management
+│   ├── config/                     # Configuration management
+│   ├── kv/                         # KV interface definition
 │   ├── database/
-│   │   └── mongodb.go           # MongoDB connection handling
-│   ├── models/
-│   │   └── card.go              # Data models
-│   ├── handlers/
-│   │   └── identify.go          # HTTP request handlers
-│   └── service/
-│       └── card_service.go      # Business logic
-├── bin/
-│   └── server                   # Compiled binary
-├── .env.example                 # Environment configuration template
-├── go.mod                       # Go module definition
-└── README.md                    # This file
+│   │   ├── factory.go              # Backend factory (NewKV)
+│   │   ├── bbolt/                  # BBolt implementation
+│   │   ├── mongodb/                # MongoDB implementation
+│   │   └── redis/                  # Redis implementation
+│   ├── models/                     # Data models
+│   ├── handlers/                   # HTTP handlers
+│   └── services/                   # Business logic
+├── Dockerfile                      # Multi-stage build (distroless)
+├── docker-compose.yml              # Production deployment
+├── docker-compose.dev.yml          # Development (with optional Redis/MongoDB)
+├── .env.example                    # Environment configuration template
+└── go.mod
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- MongoDB Atlas account with connection URI
-- Git
+- Go 1.25.5+
+- (Optional) MongoDB or Redis if using those backends
 
 ### Installation
 
-1. **Clone the repository**
 ```bash
-git clone https://github.com/stayforge/access-authorization-service.git
-cd Access-Authorization-Service
-```
-
-2. **Install dependencies**
-```bash
+git clone https://github.com/stayforge/commander.git
+cd commander
 go mod download
 ```
 
-3. **Configure environment**
+### Configure
+
 ```bash
 cp .env.example .env
-# Edit .env with your MongoDB Atlas credentials
+# Edit .env -- choose your database backend (bbolt/mongodb/redis)
 ```
 
-4. **Build the application**
+### Build & Run
+
 ```bash
 go build -o bin/server ./cmd/server
-```
-
-5. **Run the server**
-```bash
 ./bin/server
 ```
 
-The server will start on port 8080 (or the port specified in your `.env` file).
+Or run directly:
 
-## ⚙️ Configuration
-
-Create a `.env` file in the root directory with the following variables:
-
-```env
-# MongoDB Atlas Configuration
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/
-MONGODB_DATABASE=your_database_name
-MONGODB_COLLECTION=cards
-
-# Server Configuration
-SERVER_PORT=8080
-
-# Environment (STANDARD, PRODUCTION, etc.)
-ENVIRONMENT=STANDARD
+```bash
+go run cmd/server/main.go
 ```
 
-### Configuration Options
+The server starts on port `8080` by default. Verify with:
+
+```bash
+curl http://localhost:8080/health
+```
+
+## Configuration
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MONGODB_URI` | ✅ | - | MongoDB Atlas connection string |
-| `MONGODB_DATABASE` | ✅ | - | Database name |
-| `MONGODB_COLLECTION` | ❌ | `cards` | Collection name for card documents |
-| `SERVER_PORT` | ❌ | `8080` | HTTP server port |
-| `ENVIRONMENT` | ❌ | `STANDARD` | Environment name (affects logging mode) |
+| `DATABASE` | No | `bbolt` | Storage backend: `bbolt`, `mongodb`, `redis` |
+| `SERVER_PORT` | No | `8080` | HTTP server port |
+| `ENVIRONMENT` | No | `STANDARD` | `STANDARD` or `PRODUCTION` (enables Gin release mode) |
+| `DATA_PATH` | For bbolt | `/var/lib/stayforge/commander` | BBolt data directory |
+| `MONGODB_URI` | For mongodb | - | MongoDB connection string |
+| `REDIS_URI` | For redis | - | Redis connection URI |
 
-## 📡 API Endpoints
+## API Endpoints
 
-### 1. JSON Identification (Recommended)
-
-**POST** `/identify/json`  
-**POST** `/identify/json/:device_sn`
-
-Identify a device using JSON request body.
-
-**Headers:**
-- `X-Device-SN` (optional): Device serial number (alternative to path parameter)
-- `X-Environment` (optional): Environment name (default: STANDARD)
-
-**Request Body:**
-```json
-{
-  "card_number": "ABC123DEF456"
-}
-```
-
-**Success Response (200):**
-```json
-{
-  "message": "Successfully",
-  "card_number": "ABC123DEF456",
-  "devices": ["device-001", "device-002"],
-  "invalid_at": "2024-01-01T00:00:00Z",
-  "expired_at": "2024-12-31T23:59:59Z",
-  "activation_offset_seconds": 60,
-  "owner_client_id": "client-123",
-  "name": "Guest Room 101"
-}
-```
-
-**Error Response (400/404):**
-```json
-{
-  "message": "card not found"
-}
-```
-
-**Example:**
-```bash
-curl -X POST http://localhost:8080/identify/json/device-001 \
-  -H "Content-Type: application/json" \
-  -d '{"card_number": "ABC123DEF456"}'
-```
-
-### 2. vguang-m350 Device Identification
-
-**POST** `/identify/vguang-m350/:device_name`
-
-Special endpoint for vguang-m350 hardware devices with custom byte-handling logic.
-
-**Path Parameters:**
-- `device_name`: Device identifier
-
-**Request Body:** Raw bytes (card data)
-
-**Success Response (200):**
-```
-code=0000
-```
-
-**Error Response (404):**
-```json
-{
-  "message": "card not found"
-}
-```
-
-**Example:**
-```bash
-curl -X POST http://localhost:8080/identify/vguang-m350/device-001 \
-  --data-raw "ABC123DEF456"
-```
-
-### 3. Health Check
+### Health Check
 
 **GET** `/health`
 
-Check service health status.
-
-**Success Response (200):**
 ```json
 {
   "status": "healthy",
   "environment": "STANDARD",
-  "timestamp": "2024-01-15T10:30:00Z"
+  "message": "Commander service is running",
+  "timestamp": "2025-01-15T10:30:00Z"
 }
 ```
 
-## 🔐 Authentication Logic
+### Root
 
-### Time-Based Validation
+**GET** `/`
 
-Cards have activation and expiration times with drift compensation:
-
-```
-Card is VALID when:
-  current_time >= (invalid_at - activation_offset_seconds)
-  AND
-  current_time <= expired_at
-```
-
-The `activation_offset_seconds` (default: 60) compensates for NTP clock drift, allowing cards to activate slightly before their scheduled time.
-
-### Device Authorization
-
-Each card contains a list of authorized device IDs. A device can only authenticate if:
-1. The card exists in the database
-2. The card is within its valid time range
-3. The device ID is in the card's `devices` array
-
-## 🗄️ MongoDB Schema
-
-### Card Document
-
-```javascript
+```json
 {
-  "_id": ObjectId("..."),
-  "card_number": "ABC123DEF456",        // Unique card identifier (uppercase)
-  "devices": [                          // List of authorized device IDs
-    "device-001",
-    "device-002"
-  ],
-  "invalid_at": ISODate("2024-01-01T00:00:00Z"),  // Activation time
-  "expired_at": ISODate("2024-12-31T23:59:59Z"),  // Expiration time
-  "activation_offset_seconds": 60,      // Drift compensation (seconds)
-  "owner_client_id": "client-123",      // Optional: Owner identifier
-  "name": "Guest Room 101"              // Optional: Human-readable name
+  "message": "Welcome to Commander API",
+  "version": "dev"
 }
 ```
 
-### Required Indexes
+### Card Verification (MongoDB backend only)
 
-Create these indexes for optimal performance:
+**POST** `/api/v1/namespaces/:namespace`
 
-```javascript
-db.cards.createIndex({ "card_number": 1 }, { unique: true })
-db.cards.createIndex({ "devices": 1 })
-db.cards.createIndex({ "invalid_at": 1, "expired_at": 1 })
-```
+Standard card verification endpoint.
 
-## 🛠️ Development
+| Source | Parameter | Description |
+|--------|-----------|-------------|
+| Header | `X-Device-SN` | Device serial number |
+| Body | plain text | Card number |
 
-### Run in Development Mode
-
-```bash
-# With hot reload using air (install: go install github.com/cosmtrek/air@latest)
-air
-
-# Or run directly
-go run cmd/server/main.go
-```
-
-### Build for Production
+- **204** -- Card is valid, device is authorized
+- **400** -- Bad request or card not active/expired
+- **403** -- Device not authorized
+- **404** -- Card not found
 
 ```bash
-# Build optimized binary
-go build -ldflags="-s -w" -o bin/server ./cmd/server
-
-# Build for Linux (from macOS)
-GOOS=linux GOARCH=amd64 go build -o bin/server-linux ./cmd/server
+curl -X POST http://localhost:8080/api/v1/namespaces/default \
+  -H "X-Device-SN: device-001" \
+  -d "ABC123DEF456"
 ```
+
+**POST** `/api/v1/namespaces/:namespace/device/:device_name/vguang`
+
+Legacy vguang-m350 device compatibility endpoint.
+
+- **200** `code=0000` -- Success
+- **404** -- Not found
+
+## Docker
+
+### Build & Run
+
+```bash
+docker build -t commander .
+docker run -p 8080:8080 --env-file .env commander
+```
+
+### Docker Compose (Production)
+
+```bash
+docker compose up -d
+```
+
+### Docker Compose (Development)
+
+```bash
+# BBolt only (default)
+docker compose -f docker-compose.dev.yml up -d
+
+# With Redis
+docker compose -f docker-compose.dev.yml --profile redis up -d
+
+# With MongoDB
+docker compose -f docker-compose.dev.yml --profile mongodb up -d
+```
+
+## Development
 
 ### Run Tests
 
@@ -285,114 +205,18 @@ GOOS=linux GOARCH=amd64 go build -o bin/server-linux ./cmd/server
 go test ./...
 ```
 
-## 📊 Error Codes
+### Lint
 
-| HTTP Status | Description |
-|-------------|-------------|
-| 200 | Authentication successful - device authorized |
-| 400 | Bad request or card not active/expired |
-| 404 | Card not found in database |
-| 500 | Internal server error |
-
-## 🔍 Logging
-
-The service logs all requests with the following format:
-
-```
-[POST] /identify/json - Status: 200 - Latency: 15ms - IP: 192.168.1.100
-```
-
-Error details are logged separately for debugging.
-
-## 🚦 Deployment
-
-### Docker (Recommended)
-
-Create a `Dockerfile`:
-
-```dockerfile
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-COPY go.* ./
-RUN go mod download
-COPY . .
-RUN go build -ldflags="-s -w" -o server ./cmd/server
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/server .
-EXPOSE 8080
-CMD ["./server"]
-```
-
-Build and run:
 ```bash
-docker build -t access-authorization-service .
-docker run -p 8080:8080 --env-file .env access-authorization-service
+golangci-lint run
 ```
 
-### Systemd Service
+### Build for Production
 
-Create `/etc/systemd/system/access-auth.service`:
-
-```ini
-[Unit]
-Description=Access Authorization Service
-After=network.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/access-authorization-service
-Environment="MONGODB_URI=your_uri"
-Environment="MONGODB_DATABASE=your_db"
-ExecStart=/opt/access-authorization-service/bin/server
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
+```bash
+go build -ldflags="-s -w" -o bin/server ./cmd/server
 ```
 
-## 🔄 Migration from Python
+## License
 
-Key differences from the original Python/FastAPI implementation:
-
-1. **Performance**: ~5-10x faster request handling
-2. **Memory**: ~70% lower memory footprint
-3. **Concurrency**: Native goroutines vs Python asyncio
-4. **Deployment**: Single binary (no dependencies)
-5. **Type Safety**: Compile-time type checking
-
-## 📝 License
-
-See LICENSE file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📧 Support
-
-For issues and questions:
-- Create an issue on GitHub
-- Contact: authorization.access.stayforge.net
-
-## 🎯 Roadmap
-
-- [ ] Add metrics endpoint (Prometheus)
-- [ ] Implement rate limiting
-- [ ] Add Redis caching layer
-- [ ] Support JWT authentication for admin endpoints
-- [ ] Add comprehensive test suite
-- [ ] OpenAPI/Swagger documentation
-
----
-
-**Built with ❤️ using Go and Gin Framework**
+[Business Source License 1.1](LICENSE) -- Converts to Apache-2.0 on 2035-01-01.
