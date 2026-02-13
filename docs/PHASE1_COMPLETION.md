@@ -31,10 +31,10 @@ Phase 1 of the Commander project management plan has been successfully completed
 
 3. **Namespace & Collection Management** (5 handlers)
    - ✅ GET `/api/v1/namespaces` - List namespaces
-   - ✅ GET `/api/v1/namespaces/{namespace}/collections` - List collections
-   - ✅ GET `/api/v1/namespaces/{namespace}/info` - Namespace information
-   - ✅ DELETE `/api/v1/namespaces/{namespace}` - Delete namespace
-   - ✅ DELETE `/api/v1/namespaces/{namespace}/collections/{collection}` - Delete collection
+   - ✅ GET `/api/v1/namespace/{namespace}/collections` - List collections
+   - ✅ GET `/api/v1/namespace/{namespace}/info` - Namespace information
+   - ✅ DELETE `/api/v1/namespace/{namespace}` - Delete namespace
+   - ✅ DELETE `/api/v1/namespace/{namespace}/collections/{collection}` - Delete collection
 
 4. **Comprehensive Testing**
    - ✅ Unit tests for all handlers
@@ -62,10 +62,10 @@ Phase 1 of the Commander project management plan has been successfully completed
 | DELETE | `/api/v1/kv/batch` | Batch delete | ✅ |
 | GET | `/api/v1/kv/{ns}/{col}` | List keys | ✅ |
 | GET | `/api/v1/namespaces` | List namespaces | ✅ |
-| GET | `/api/v1/namespaces/{ns}/collections` | List collections | ✅ |
-| GET | `/api/v1/namespaces/{ns}/info` | Namespace info | ✅ |
-| DELETE | `/api/v1/namespaces/{ns}` | Delete namespace | ✅ |
-| DELETE | `/api/v1/namespaces/{ns}/collections/{col}` | Delete collection | ✅ |
+| GET | `/api/v1/namespace/{ns}/collections` | List collections | ✅ |
+| GET | `/api/v1/namespace/{ns}/info` | Namespace info | ✅ |
+| DELETE | `/api/v1/namespace/{ns}` | Delete namespace | ✅ |
+| DELETE | `/api/v1/namespace/{ns}/collections/{col}` | Delete collection | ✅ |
 
 **Total Endpoints**: 12 core operations  
 **Batch Operations**: Support up to 1000 per request  

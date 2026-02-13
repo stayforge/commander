@@ -18,10 +18,10 @@ func TestCardVerificationHandler_POST_MissingHeader(t *testing.T) {
 	mockService := services.NewCardService(&mongo.Client{})
 
 	router := gin.New()
-	router.POST("/api/v1/namespaces/:namespace", CardVerificationHandler(mockService))
+	router.POST("/api/v1/namespace/:namespace", CardVerificationHandler(mockService))
 
 	// Missing X-Device-SN header
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test", bytes.NewBufferString("card001"))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespace/org_test", bytes.NewBufferString("card001"))
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -35,10 +35,10 @@ func TestCardVerificationHandler_POST_EmptyBody(t *testing.T) {
 	mockService := services.NewCardService(&mongo.Client{})
 
 	router := gin.New()
-	router.POST("/api/v1/namespaces/:namespace", CardVerificationHandler(mockService))
+	router.POST("/api/v1/namespace/:namespace", CardVerificationHandler(mockService))
 
 	// Empty body
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test", bytes.NewBufferString(""))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespace/org_test", bytes.NewBufferString(""))
 	req.Header.Set("X-Device-SN", "SN001")
 	w := httptest.NewRecorder()
 
@@ -53,10 +53,10 @@ func TestCardVerificationHandler_POST_ValidRequest(t *testing.T) {
 	mockService := services.NewCardService(&mongo.Client{})
 
 	router := gin.New()
-	router.POST("/api/v1/namespaces/:namespace", CardVerificationHandler(mockService))
+	router.POST("/api/v1/namespace/:namespace", CardVerificationHandler(mockService))
 
 	// Valid request format (will fail verification due to no mock data)
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test", bytes.NewBufferString("card001"))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespace/org_test", bytes.NewBufferString("card001"))
 	req.Header.Set("X-Device-SN", "SN001")
 	w := httptest.NewRecorder()
 
@@ -72,10 +72,10 @@ func TestCardVerificationVguangHandler_POST_EmptyBody(t *testing.T) {
 	mockService := services.NewCardService(&mongo.Client{})
 
 	router := gin.New()
-	router.POST("/api/v1/namespaces/:namespace/device/:device_name/vguang", CardVerificationVguangHandler(mockService))
+	router.POST("/api/v1/namespace/:namespace/device/:device_name/vguang", CardVerificationVguangHandler(mockService))
 
 	// Empty body
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test/device/SN001/vguang", bytes.NewBufferString(""))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespace/org_test/device/SN001/vguang", bytes.NewBufferString(""))
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -89,10 +89,10 @@ func TestCardVerificationVguangHandler_POST_ValidRequest(t *testing.T) {
 	mockService := services.NewCardService(&mongo.Client{})
 
 	router := gin.New()
-	router.POST("/api/v1/namespaces/:namespace/device/:device_name/vguang", CardVerificationVguangHandler(mockService))
+	router.POST("/api/v1/namespace/:namespace/device/:device_name/vguang", CardVerificationVguangHandler(mockService))
 
 	// Valid request format (will fail verification due to no mock data)
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespaces/org_test/device/SN001/vguang", bytes.NewBufferString("card001"))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/namespace/org_test/device/SN001/vguang", bytes.NewBufferString("card001"))
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)

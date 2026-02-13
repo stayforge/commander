@@ -134,10 +134,10 @@ curl -X DELETE http://localhost:8080/api/v1/kv/batch \
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/api/v1/namespaces` | List namespaces* |
-| GET | `/api/v1/namespaces/{namespace}/collections` | List collections* |
-| GET | `/api/v1/namespaces/{namespace}/info` | Get namespace info |
-| DELETE | `/api/v1/namespaces/{namespace}` | Delete namespace* |
-| DELETE | `/api/v1/namespaces/{namespace}/collections/{collection}` | Delete collection* |
+| GET | `/api/v1/namespace/{namespace}/collections` | List collections* |
+| GET | `/api/v1/namespace/{namespace}/info` | Get namespace info |
+| DELETE | `/api/v1/namespace/{namespace}` | Delete namespace* |
+| DELETE | `/api/v1/namespace/{namespace}/collections/{collection}` | Delete collection* |
 
 *Backend-dependent implementation
 

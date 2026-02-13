@@ -282,7 +282,7 @@ Response (HTTP 400):
 ### Get Namespace Info
 
 ```bash
-curl http://localhost:8080/api/v1/namespaces/default/info
+curl http://localhost:8080/api/v1/namespace/default/info
 ```
 
 Response:

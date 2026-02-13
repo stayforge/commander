@@ -142,7 +142,7 @@ curl http://localhost:8080/health
 
 ### Card Verification (MongoDB backend only)
 
-**POST** `/api/v1/namespaces/:namespace`
+**POST** `/api/v1/namespace/:namespace`
 
 Standard card verification endpoint.
 
@@ -157,12 +157,12 @@ Standard card verification endpoint.
 - **404** -- Card not found
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/namespaces/default \
+curl -X POST http://localhost:8080/api/v1/namespace/default \
   -H "X-Device-SN: device-001" \
   -d "ABC123DEF456"
 ```
 
-**POST** `/api/v1/namespaces/:namespace/device/:device_name/vguang`
+**POST** `/api/v1/namespace/:namespace/device/:device_name/vguang`
 
 Legacy vguang-m350 device compatibility endpoint.
 

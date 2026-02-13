@@ -14,7 +14,7 @@ import (
 )
 
 // CardVerificationHandler handles standard card verification via POST
-// POST /api/v1/namespaces/:namespace
+// POST /api/v1/namespace/:namespace
 // Header: X-Device-SN: <device_sn>
 // Body: plain text card number
 // Success: 204 No Content
@@ -62,7 +62,7 @@ func CardVerificationHandler(cardService *services.CardService) gin.HandlerFunc 
 }
 
 // CardVerificationVguangHandler handles vguang-m350 device compatibility
-// POST /api/v1/namespaces/:namespace/device/:device_name/vguang
+// POST /api/v1/namespace/:namespace/device/:device_name/vguang
 // Body: plain text or binary card number
 // Success: 200 "code=0000"
 // Error: 404 (no body, logged to console)

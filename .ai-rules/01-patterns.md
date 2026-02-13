@@ -82,13 +82,13 @@ Redis key format: `{namespace}:{collection}:{key}`
 GET/POST/DELETE/HEAD /api/v1/kv/{namespace}/{collection}/{key}
 POST/DELETE          /api/v1/kv/batch
 GET                  /api/v1/namespaces
-GET                  /api/v1/namespaces/{namespace}/collections
+GET                  /api/v1/namespace/{namespace}/collections
 ```
 
 Card verification (MongoDB only):
 ```
-POST /api/v1/namespaces/{namespace}
-POST /api/v1/namespaces/{namespace}/device/{device_name}/vguang
+POST /api/v1/namespace/{namespace}
+POST /api/v1/namespace/{namespace}/device/{device_name}/vguang
 ```
 
 ## Import Order

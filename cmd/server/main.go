@@ -150,31 +150,31 @@ func setupRoutes(router *gin.Engine, _ kv.KV, cardService *services.CardService)
 	// GET /api/v1/namespaces (list namespaces)
 	// v1.GET("/namespaces", handlers.ListNamespacesHandler(kvStore))
 
-	// GET /api/v1/namespaces/{namespace}/collections (list collections)
-	// v1.GET("/namespaces/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
+	// GET /api/v1/namespace/{namespace}/collections (list collections)
+	// v1.GET("/namespace/:namespace/collections", handlers.ListCollectionsHandler(kvStore))
 
-	// GET /api/v1/namespaces/{namespace}/info (get namespace info)
-	// v1.GET("/namespaces/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
+	// GET /api/v1/namespace/{namespace}/info (get namespace info)
+	// v1.GET("/namespace/:namespace/info", handlers.GetNamespaceInfoHandler(kvStore))
 
-	// DELETE /api/v1/namespaces/{namespace} (delete namespace)
-	// v1.DELETE("/namespaces/:namespace", handlers.DeleteNamespaceHandler(kvStore))
+	// DELETE /api/v1/namespace/{namespace} (delete namespace)
+	// v1.DELETE("/namespace/:namespace", handlers.DeleteNamespaceHandler(kvStore))
 
-	// DELETE /api/v1/namespaces/{namespace}/collections/{collection} (delete collection)
-	// v1.DELETE("/namespaces/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
+	// DELETE /api/v1/namespace/{namespace}/collections/{collection} (delete collection)
+	// v1.DELETE("/namespace/:namespace/collections/:collection", handlers.DeleteCollectionHandler(kvStore))
 
 	// ========== Card Verification (MVP) ==========
 	if cardService != nil {
-		// New standard API: POST /api/v1/namespaces/:namespace
+		// New standard API: POST /api/v1/namespace/:namespace
 		// Header: X-Device-SN
 		// Body: plain text card number
 		// Response: 204 No Content (success) or status code only (error)
-		v1.POST("/namespaces/:namespace",
+		v1.POST("/namespace/:namespace",
 			handlers.CardVerificationHandler(cardService))
 
-		// Legacy vguang-m350 compatibility: POST /api/v1/namespaces/:namespace/device/:device_name/vguang
+		// Legacy vguang-m350 compatibility: POST /api/v1/namespace/:namespace/device/:device_name/vguang
 		// Body: plain text or binary card number
 		// Response: 200 "code=0000" (success) or 404 (error)
-		v1.POST("/namespaces/:namespace/device/:device_name/vguang",
+		v1.POST("/namespace/:namespace/device/:device_name/vguang",
 			handlers.CardVerificationVguangHandler(cardService))
 	}
 }

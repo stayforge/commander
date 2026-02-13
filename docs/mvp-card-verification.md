@@ -22,7 +22,7 @@ Verification Result (204 / 200 "code=0000" / Status Only)
 
 ### Standard Card Verification (New API)
 
-**Endpoint**: `POST /api/v1/namespaces/:namespace`
+**Endpoint**: `POST /api/v1/namespace/:namespace`
 
 **Headers**:
 - `X-Device-SN` (required): Device serial number (e.g., `SN20250112001`)
@@ -44,7 +44,7 @@ Verification Result (204 / 200 "code=0000" / Status Only)
 curl -X POST \
   -H "X-Device-SN: SN20250112001" \
   -d "11110011" \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a
 ```
 
 **Example Response (Success)**:
@@ -62,7 +62,7 @@ HTTP/1.1 404 Not Found
 
 ### vguang-m350 Compatibility (Legacy API)
 
-**Endpoint**: `POST /api/v1/namespaces/:namespace/device/:device_name/vguang`
+**Endpoint**: `POST /api/v1/namespace/:namespace/device/:device_name/vguang`
 
 **Body**: Plain text or binary card number
 
@@ -83,7 +83,7 @@ HTTP/1.1 404 Not Found
 ```bash
 curl -X POST \
   -d "11110011" \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a/device/SN20250112001
 ```
 
 **Example Response (Success)**:
@@ -98,7 +98,7 @@ code=0000
 ```bash
 # Binary card data will be reversed and converted to hex
 echo -ne '\x01\x02\x03\x04' | curl -X POST -d @- \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a/device/SN20250112001
 ```
 
 ---
@@ -262,7 +262,7 @@ go test ./internal/handlers -v -run Card
 curl -X POST \
   -H "X-Device-SN: SN20250112001" \
   -d "11110011" \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a
 
 # Expected: 204 No Content
 ```
@@ -271,7 +271,7 @@ curl -X POST \
 ```bash
 curl -X POST \
   -d "11110011" \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a
 
 # Expected: 400 Bad Request (no body)
 ```
@@ -281,7 +281,7 @@ curl -X POST \
 curl -X POST \
   -H "X-Device-SN: INVALID_SN" \
   -d "11110011" \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a
 
 # Expected: 404 Not Found (no body)
 ```
@@ -290,7 +290,7 @@ curl -X POST \
 ```bash
 curl -X POST \
   -d "11110011" \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a/device/SN20250112001
 
 # Expected: 200 OK
 # Body: code=0000
@@ -300,7 +300,7 @@ curl -X POST \
 ```bash
 curl -X POST \
   -d "nonexistent_card" \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a/device/SN20250112001
 
 # Expected: 404 Not Found (no body)
 ```
@@ -309,7 +309,7 @@ curl -X POST \
 ```bash
 # Simulate binary card reader output
 echo -ne '\x01\x02\x03\x04' | curl -X POST -d @- \
-  http://localhost:8080/api/v1/namespaces/org_4e8fb2461d71963a/device/SN20250112001
+  http://localhost:8080/api/v1/namespace/org_4e8fb2461d71963a/device/SN20250112001
 
 # Card number will be: 04030201 (reversed hex)
 # Expected: 200 OK or 404 (depending on card existence)
@@ -357,8 +357,8 @@ echo -ne '\x01\x02\x03\x04' | curl -X POST -d @- \
 
 | Method | Endpoint | Purpose | Success | Error |
 |--------|----------|---------|---------|-------|
-| POST | `/api/v1/namespaces/:namespace` | Standard verification | 204 No Content | Status only |
-| POST | `/api/v1/namespaces/:namespace/device/:device_name/vguang` | vguang-m350 compatibility | 200 + "code=0000" | 404 |
+| POST | `/api/v1/namespace/:namespace` | Standard verification | 204 No Content | Status only |
+| POST | `/api/v1/namespace/:namespace/device/:device_name/vguang` | vguang-m350 compatibility | 200 + "code=0000" | 404 |
 
 ---
 

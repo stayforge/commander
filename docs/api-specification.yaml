@@ -373,7 +373,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/namespaces/{namespace}/info:
+  /api/v1/namespace/{namespace}/info:
     get:
       tags:
         - Namespace Management
@@ -401,7 +401,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/namespaces/{namespace}/collections:
+  /api/v1/namespace/{namespace}/collections:
     get:
       tags:
         - Namespace Management
@@ -429,7 +429,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/namespaces/{namespace}:
+  /api/v1/namespace/{namespace}:
     delete:
       tags:
         - Namespace Management
@@ -459,7 +459,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /api/v1/namespaces/{namespace}/collections/{collection}:
+  /api/v1/namespace/{namespace}/collections/{collection}:
     delete:
       tags:
         - Namespace Management

@@ -29,12 +29,12 @@ func TestListNamespacesHandler(t *testing.T) {
 	assert.Equal(t, "NOT_IMPLEMENTED", resp.Code)
 }
 
-// TestListCollectionsHandler tests GET /api/v1/namespaces/{namespace}/collections
+// TestListCollectionsHandler tests GET /api/v1/namespace/{namespace}/collections
 func TestListCollectionsHandler(t *testing.T) {
 	mockKV := NewMockKV()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.GET("/api/v1/namespaces/:namespace/collections", ListCollectionsHandler(mockKV))
+	router.GET("/api/v1/namespace/:namespace/collections", ListCollectionsHandler(mockKV))
 
 	tests := []struct {
 		name           string
@@ -55,7 +55,7 @@ func TestListCollectionsHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, _ := http.NewRequest("GET", "/api/v1/namespaces/"+tt.namespace+"/collections", http.NoBody)
+			req, _ := http.NewRequest("GET", "/api/v1/namespace/"+tt.namespace+"/collections", http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -64,12 +64,12 @@ func TestListCollectionsHandler(t *testing.T) {
 	}
 }
 
-// TestDeleteNamespaceHandler tests DELETE /api/v1/namespaces/{namespace}
+// TestDeleteNamespaceHandler tests DELETE /api/v1/namespace/{namespace}
 func TestDeleteNamespaceHandler(t *testing.T) {
 	mockKV := NewMockKV()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.DELETE("/api/v1/namespaces/:namespace", DeleteNamespaceHandler(mockKV))
+	router.DELETE("/api/v1/namespace/:namespace", DeleteNamespaceHandler(mockKV))
 
 	tests := []struct {
 		name           string
@@ -85,7 +85,7 @@ func TestDeleteNamespaceHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, _ := http.NewRequest("DELETE", "/api/v1/namespaces/"+tt.namespace, http.NoBody)
+			req, _ := http.NewRequest("DELETE", "/api/v1/namespace/"+tt.namespace, http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -94,12 +94,12 @@ func TestDeleteNamespaceHandler(t *testing.T) {
 	}
 }
 
-// TestDeleteCollectionHandler tests DELETE /api/v1/namespaces/{namespace}/collections/{collection}
+// TestDeleteCollectionHandler tests DELETE /api/v1/namespace/{namespace}/collections/{collection}
 func TestDeleteCollectionHandler(t *testing.T) {
 	mockKV := NewMockKV()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.DELETE("/api/v1/namespaces/:namespace/collections/:collection", DeleteCollectionHandler(mockKV))
+	router.DELETE("/api/v1/namespace/:namespace/collections/:collection", DeleteCollectionHandler(mockKV))
 
 	tests := []struct {
 		name           string
@@ -118,7 +118,7 @@ func TestDeleteCollectionHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequest("DELETE",
-				"/api/v1/namespaces/"+tt.namespace+"/collections/"+tt.collection, http.NoBody)
+				"/api/v1/namespace/"+tt.namespace+"/collections/"+tt.collection, http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
@@ -127,12 +127,12 @@ func TestDeleteCollectionHandler(t *testing.T) {
 	}
 }
 
-// TestGetNamespaceInfoHandler tests GET /api/v1/namespaces/{namespace}/info
+// TestGetNamespaceInfoHandler tests GET /api/v1/namespace/{namespace}/info
 func TestGetNamespaceInfoHandler(t *testing.T) {
 	mockKV := NewMockKV()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.GET("/api/v1/namespaces/:namespace/info", GetNamespaceInfoHandler(mockKV))
+	router.GET("/api/v1/namespace/:namespace/info", GetNamespaceInfoHandler(mockKV))
 
 	tests := []struct {
 		name           string
@@ -153,7 +153,7 @@ func TestGetNamespaceInfoHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, _ := http.NewRequest("GET", "/api/v1/namespaces/"+tt.namespace+"/info", http.NoBody)
+			req, _ := http.NewRequest("GET", "/api/v1/namespace/"+tt.namespace+"/info", http.NoBody)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
 
