@@ -54,7 +54,7 @@ func ListNamespacesHandler(kvStore kv.KV) gin.HandlerFunc {
 	}
 }
 
-// ListCollectionsHandler handles GET /api/v1/namespaces/{namespace}/collections
+// ListCollectionsHandler handles GET /api/v1/namespace/{namespace}/collections
 // Lists all collections in a namespace (returns empty list with not-implemented message)
 func ListCollectionsHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -77,7 +77,7 @@ func ListCollectionsHandler(kvStore kv.KV) gin.HandlerFunc {
 	}
 }
 
-// DeleteNamespaceHandler handles DELETE /api/v1/namespaces/{namespace}
+// DeleteNamespaceHandler handles DELETE /api/v1/namespace/{namespace}
 // Deletes an entire namespace (backend-dependent)
 // Note: For BBolt, this would delete the entire .db file
 // For MongoDB, this would drop the database
@@ -103,7 +103,7 @@ func DeleteNamespaceHandler(kvStore kv.KV) gin.HandlerFunc {
 	}
 }
 
-// DeleteCollectionHandler handles DELETE /api/v1/namespaces/{namespace}/collections/{collection}
+// DeleteCollectionHandler handles DELETE /api/v1/namespace/{namespace}/collections/{collection}
 // Deletes all keys in a collection
 func DeleteCollectionHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -137,7 +137,7 @@ type NamespaceInfoResponse struct {
 	Timestamp   string   `json:"timestamp"`
 }
 
-// GetNamespaceInfoHandler handles GET /api/v1/namespaces/{namespace}/info
+// GetNamespaceInfoHandler handles GET /api/v1/namespace/{namespace}/info
 // Returns information about a namespace
 func GetNamespaceInfoHandler(kvStore kv.KV) gin.HandlerFunc {
 	return func(c *gin.Context) {

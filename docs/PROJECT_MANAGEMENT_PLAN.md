@@ -119,9 +119,9 @@
 
 **Tasks**:
 - [ ] Implement GET `/api/v1/namespaces` (list)
-- [ ] Implement GET `/api/v1/namespaces/{namespace}/collections` (list)
-- [ ] Implement DELETE `/api/v1/namespaces/{namespace}` (drop namespace)
-- [ ] Implement DELETE `/api/v1/namespaces/{namespace}/collections/{collection}` (drop collection)
+- [ ] Implement GET `/api/v1/namespace/{namespace}/collections` (list)
+- [ ] Implement DELETE `/api/v1/namespace/{namespace}` (drop namespace)
+- [ ] Implement DELETE `/api/v1/namespace/{namespace}/collections/{collection}` (drop collection)
 - [ ] Add confirmation mechanisms for destructive operations
 - [ ] Update KV interface if needed
 
